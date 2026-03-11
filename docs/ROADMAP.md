@@ -267,30 +267,74 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 9 — Real system actions
+## Phase 9 — Real system actions ✓
+
+**Status: COMPLETE**
 
 **Objective:** Enable real mouse, keyboard, and system actions (opt-in, behind safety gates).
 
 **Deliverables:**
-- Actions module: `execute_real()` implementations for all action types
-- Safety gate: user must explicitly confirm before real execution begins
-- Kill switch: user can abort execution at any time from GUI
-- Rate limiting on actions to prevent runaway execution
+- Actions module: `execute_real()` for all 12 action types via enigo (mouse/keyboard) + Win32 API (windows)
+- Mouse: click (left/right/middle), move, drag — via enigo 0.6
+- Keyboard: type text, press key, key combos (Ctrl+S, Alt+F4, etc.) — via enigo 0.6
+- Window: focus, minimize, maximize, close — via Win32 EnumWindows + ShowWindow + SetForegroundWindow
+- File/System: open files (ShellExecuteW), launch applications (std::process::Command)
+- Safety gate: `agent.confirm_plan` notification + `agent.confirm_execution` IPC method
+- GUI confirmation overlay with plan preview, Execute (green) and Cancel (red) buttons
+- Kill switch: `agent.abort` IPC method + `Arc<AtomicBool>` abort flag checked before each step
+- GUI red STOP button visible during execution, replaces Send button
+- Rate limiting: configurable `rate_limit_ms` (default 200ms) between real actions
+- New step statuses: `Aborted`, `AwaitingConfirmation`
 
 **Definition of done:**
-- Agent can perform a simple real task (e.g., open Notepad and type text).
-- User can stop execution mid-task.
-- All actions are logged with full audit trail.
+- Agent can perform a simple real task (e.g., open Notepad and type text). ✓
+- User can stop execution mid-task. ✓
+- User must confirm before real execution begins. ✓
+- All actions are logged with full audit trail. ✓
 
 **Risks:**
-- Unintended system interaction.
-- Safety and control must be rock-solid before enabling this phase.
+- Unintended system interaction (mitigated: confirmation gate + abort + rate limiting).
 
 **Dependencies:** Phase 8.
 
 ---
 
-## Phase 10 — Advanced logging, error handling, and robustness
+## Phase 10 — Iterative VLM-Guided Action Loop ✓
+
+**Status: COMPLETE**
+
+**Objective:** Enable the agent to handle complex or unknown instructions via an iterative perception-action loop, where the local VLM (moondream) decides each action by analyzing the current screen state.
+
+**Deliverables:**
+- `handle_instruction_iterative()` in orchestrator: screenshot → analyze → act loop with max 15 iterations
+- `build_vlm_action_prompt()`: structured prompt that asks moondream for CLICK/TYPE/KEY/COMBO/DONE/FAIL responses
+- `parse_vlm_action()`: parses VLM text response into `(ActionType, ActionParams, description)` tuples
+- `is_generic_plan()`: routing logic that detects when keyword planner cannot handle an instruction:
+  - Case 1: generic fallback (single SystemLaunch with only `instruction` param, no `application`)
+  - Case 2: oversimplified plan (2+ action verbs in instruction but only 1 keyword-planned step)
+- IPC routing in `handle_instruct()`: automatically selects iterative vs. static execution path
+- Async `agent.instruct` spawned in separate tokio task to prevent TCP read loop deadlock
+- Confirmation gate for iterative mode in real execution (reuses existing oneshot channel pattern)
+- Abort support checked between each VLM iteration
+- Action history tracking: each step result appended to context for next VLM query
+- Unit tests for `parse_vlm_action` and `is_generic_plan`
+
+**Definition of done:**
+- Generic/complex instructions automatically route to iterative VLM loop. ✓
+- VLM can guide multi-step tasks via screenshot analysis. ✓
+- Abort and confirmation gates work in iterative mode. ✓
+- Known instructions (open notepad, calculator, etc.) still use keyword planner. ✓
+- Unit tests pass for parse_vlm_action and is_generic_plan (9 new tests). ✓
+
+**Risks:**
+- VLM (moondream) may struggle with complex UIs; mitigated by MAX_VLM_ITERATIONS limit and FAIL response handling.
+- VLM response format may vary; mitigated by uppercase normalization and line-by-line parsing.
+
+**Dependencies:** Phase 9.
+
+---
+
+## Phase 11 — Advanced logging, error handling, and robustness
 
 **Objective:** Harden the system for reliable daily use.
 
@@ -310,4 +354,4 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 **Risks:**
 - Edge cases in crash recovery.
 
-**Dependencies:** Phase 9.
+**Dependencies:** Phase 10.

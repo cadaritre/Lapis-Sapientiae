@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub reasoning_model: String,
     /// Reasoning LLM endpoint (auto-set per provider, overridable for "custom").
     pub reasoning_endpoint: String,
+    /// Minimum milliseconds between real action executions (0 = no limit).
+    pub rate_limit_ms: u64,
 }
 
 impl Default for AppConfig {
@@ -41,6 +43,7 @@ impl Default for AppConfig {
             reasoning_api_key: String::new(),
             reasoning_model: "claude-sonnet-4-20250514".into(),
             reasoning_endpoint: "https://api.anthropic.com".into(),
+            rate_limit_ms: 200,
         }
     }
 }

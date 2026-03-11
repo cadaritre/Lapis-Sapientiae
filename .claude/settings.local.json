@@ -8,7 +8,8 @@
       "Glob(*)",
       "Grep(*)",
       "mcp__Claude_Preview__*",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:docs.rs)"
     ]
   }
 }

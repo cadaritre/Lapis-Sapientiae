@@ -58,6 +58,22 @@ The main loop of the agent. Responsibilities:
 
 The orchestrator owns the control flow. It is the only module that coordinates between Planner, Executor, and Perception.
 
+#### Iterative VLM-Guided Action Loop
+
+When the keyword planner cannot handle a complex instruction (detected by `is_generic_plan()`), the orchestrator switches to an iterative perception-action loop instead of executing a static plan:
+
+1. Capture screenshot of current screen
+2. Build a structured prompt with the user's instruction, step number, and action history
+3. Send screenshot + prompt to VLM (moondream via Ollama)
+4. Parse VLM response: `CLICK x y`, `TYPE text`, `KEY name`, `COMBO keys`, `DONE`, or `FAIL`
+5. Execute the parsed action via `actions::dispatch()`
+6. Append result to history for context in next iteration
+7. Repeat until DONE, FAIL, or max iterations (15)
+
+`is_generic_plan()` detects two cases that trigger iterative mode:
+- **Generic fallback**: a single `SystemLaunch` step with only an `instruction` parameter (no `application`)
+- **Oversimplified plan**: keyword planner matched one keyword but the instruction contains 2+ distinct action verbs
+
 ### Planner
 
 Interprets user intent and produces a structured plan.
@@ -209,6 +225,28 @@ User types message in ChatView
           → IPC response → GUI
         → AgentService receives response
       → ChatViewModel displays result
+```
+
+### Iterative VLM instruction flow (complex/generic tasks)
+
+```
+User sends complex instruction (e.g., "create a folder called hello on the desktop")
+  → AgentService.SendInstruction(text)
+    → IPC: { method: "agent.instruct", params: { text: "..." } }
+      → handle_instruct() spawned in separate tokio task
+        → planner::create_plan() → keyword fallback
+        → is_generic_plan() → true
+        → If real mode: send agent.confirm_plan notification, await agent.confirm_execution
+        → orchestrator::handle_instruction_iterative()
+          → loop (max 15 iterations):
+            → perception::capture_and_analyze(prompt)
+            → parse_vlm_action(vlm_response)
+            → if DONE/FAIL: break
+            → actions::dispatch(action_type, params, simulation)
+            → IPC notification → GUI: { method: "agent.step_progress" }
+            → append result to history
+          ← summary
+        → IPC response → GUI
 ```
 
 ### Screenshot capture flow

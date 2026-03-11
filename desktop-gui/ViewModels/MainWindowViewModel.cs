@@ -135,6 +135,24 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSimulationMode = true;
 
+    partial void OnIsSimulationModeChanged(bool value)
+    {
+        _ = SendSimulationModeAsync(value);
+    }
+
+    private async Task SendSimulationModeAsync(bool simMode)
+    {
+        if (!_agent.IsConnected) return;
+        try
+        {
+            await _agent.ConfigureSimulationAsync(simMode);
+            LogEntries.Add(simMode
+                ? LogEntry.Info("Simulation mode ON")
+                : LogEntry.Warn("Simulation mode OFF — REAL ACTIONS ENABLED"));
+        }
+        catch { }
+    }
+
     [ObservableProperty]
     private string _userInput = string.Empty;
 
@@ -152,6 +170,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isSending;
+
+    [ObservableProperty]
+    private bool _isExecuting;
+
+    [ObservableProperty]
+    private bool _isConfirmationPending;
+
+    [ObservableProperty]
+    private string _confirmationPlanText = string.Empty;
 
     [ObservableProperty]
     private ConversationItem? _selectedConversation;
@@ -201,6 +228,10 @@ public partial class MainWindowViewModel : ViewModelBase
             if (method == "agent.step_progress" && paramsNode is not null)
             {
                 Dispatcher.UIThread.Post(() => HandleStepProgress(paramsNode));
+            }
+            else if (method == "agent.confirm_plan" && paramsNode is not null)
+            {
+                Dispatcher.UIThread.Post(() => HandleConfirmPlan(paramsNode));
             }
         };
 
@@ -273,6 +304,42 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             LogEntries.Add(LogEntry.Error($"Step {stepId}/{total} failed: {result ?? desc}"));
         }
+        else if (status == "aborted")
+        {
+            ChatMessages.Add(ChatMessage.System($"Execution aborted at step {stepId}/{total}"));
+            LogEntries.Add(LogEntry.Warn($"Aborted at step {stepId}/{total}"));
+        }
+        else if (status == "awaiting_confirmation")
+        {
+            LogEntries.Add(LogEntry.Info("Awaiting user confirmation for real execution"));
+        }
+    }
+
+    private void HandleConfirmPlan(System.Text.Json.Nodes.JsonNode paramsNode)
+    {
+        var instruction = paramsNode["instruction"]?.GetValue<string>() ?? "";
+        var stepsArray = paramsNode["steps"]?.AsArray();
+        var reasoning = paramsNode["reasoning"]?.GetValue<string>();
+
+        var planText = $"Instruction: {instruction}\n";
+        if (!string.IsNullOrEmpty(reasoning))
+            planText += $"Reasoning: {reasoning}\n";
+        planText += "\nSteps:\n";
+
+        if (stepsArray is not null)
+        {
+            foreach (var step in stepsArray)
+            {
+                var id = step?["id"]?.GetValue<int>() ?? 0;
+                var desc = step?["description"]?.GetValue<string>() ?? "";
+                var actionType = step?["action_type"]?.GetValue<string>() ?? "";
+                planText += $"  {id}. [{actionType}] {desc}\n";
+            }
+        }
+
+        ConfirmationPlanText = planText;
+        IsConfirmationPending = true;
+        ChatMessages.Add(ChatMessage.System("Real execution requires confirmation. Review the plan above."));
     }
 
     private async Task StartServicesAndConnectAsync()
@@ -333,6 +400,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
             // Send current VLM config
             await _agent.ConfigureAsync(Settings.VisionEndpoint, Settings.VisionModel);
+
+            // Send simulation mode state
+            await _agent.ConfigureSimulationAsync(IsSimulationMode);
 
             // Send reasoning config if API key is set
             if (!string.IsNullOrEmpty(Settings.ApiKey))
@@ -560,6 +630,38 @@ public partial class MainWindowViewModel : ViewModelBase
     };
 
     [RelayCommand]
+    private async Task AbortExecution()
+    {
+        if (!_agent.IsConnected) return;
+        var ok = await _agent.AbortAsync();
+        if (ok)
+        {
+            ChatMessages.Add(ChatMessage.System("Abort signal sent."));
+            LogEntries.Add(LogEntry.Warn("Abort signal sent to Core Agent"));
+        }
+    }
+
+    [RelayCommand]
+    private async Task ConfirmExecution()
+    {
+        IsConfirmationPending = false;
+        if (!_agent.IsConnected) return;
+        await _agent.ConfirmExecutionAsync(true);
+        ChatMessages.Add(ChatMessage.System("Execution confirmed. Running..."));
+        LogEntries.Add(LogEntry.Info("User confirmed real execution"));
+    }
+
+    [RelayCommand]
+    private async Task CancelExecution()
+    {
+        IsConfirmationPending = false;
+        if (!_agent.IsConnected) return;
+        await _agent.ConfirmExecutionAsync(false);
+        ChatMessages.Add(ChatMessage.System("Execution cancelled."));
+        LogEntries.Add(LogEntry.Warn("User cancelled execution"));
+    }
+
+    [RelayCommand]
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(UserInput) || IsSending)
@@ -585,6 +687,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         IsSending = true;
+        IsExecuting = true;
         try
         {
             var response = await _agent.SendInstructionAsync(instruction);
@@ -601,6 +704,8 @@ public partial class MainWindowViewModel : ViewModelBase
         finally
         {
             IsSending = false;
+            IsExecuting = false;
+            IsConfirmationPending = false;
         }
     }
 }

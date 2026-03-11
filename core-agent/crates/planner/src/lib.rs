@@ -353,6 +353,10 @@ fn match_instruction(instruction: &str) -> Vec<PlanStep> {
         plan_type_text(instruction)
     } else if instruction.contains("click") || instruction.contains("press") {
         plan_click()
+    } else if instruction.contains("explorer") || instruction.contains("explorador") || instruction.contains("file manager") {
+        plan_open_explorer()
+    } else if instruction.contains("browser") || instruction.contains("navegador") || instruction.contains("chrome") || instruction.contains("edge") {
+        plan_open_browser()
     } else if instruction.contains("close") || instruction.contains("cerrar") {
         plan_close_window()
     } else if instruction.contains("search") || instruction.contains("buscar") || instruction.contains("find") {
@@ -398,6 +402,26 @@ fn plan_open_calculator() -> Vec<PlanStep> {
             expected_outcome: "Calculator window is in foreground".into(),
         },
     ]
+}
+
+fn plan_open_explorer() -> Vec<PlanStep> {
+    vec![PlanStep {
+        id: 1,
+        action_type: ActionType::SystemLaunch,
+        parameters: params(&[("application", "explorer.exe")]),
+        description: "Launch File Explorer".into(),
+        expected_outcome: "File Explorer window appears".into(),
+    }]
+}
+
+fn plan_open_browser() -> Vec<PlanStep> {
+    vec![PlanStep {
+        id: 1,
+        action_type: ActionType::SystemLaunch,
+        parameters: params(&[("application", "msedge.exe")]),
+        description: "Launch web browser".into(),
+        expected_outcome: "Browser window appears".into(),
+    }]
 }
 
 fn plan_type_text(instruction: &str) -> Vec<PlanStep> {

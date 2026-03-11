@@ -1,7 +1,7 @@
 /// Actions module — defines the trait, types, and handlers for all system actions.
 ///
 /// Each action supports simulated and real execution modes.
-/// Phase 5: all handlers implemented in simulation mode with detailed logging.
+/// Phase 9: real execution via enigo (mouse/keyboard) and Win32 API (windows).
 use common::{LapisError, LapisResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -68,10 +68,17 @@ pub fn dispatch(
     }
 }
 
-// ── Helper ──
+// ── Helpers ──
 
 fn param(params: &ActionParams, key: &str) -> String {
     params.get(key).cloned().unwrap_or_default()
+}
+
+fn param_i32(params: &ActionParams, key: &str) -> LapisResult<i32> {
+    let val = param(params, key);
+    val.parse::<i32>().map_err(|_| {
+        LapisError::Action(format!("Invalid integer for param '{key}': '{val}'"))
+    })
 }
 
 fn sim_result(desc: String) -> ActionResult {
@@ -82,10 +89,207 @@ fn sim_result(desc: String) -> ActionResult {
     }
 }
 
-fn not_implemented(action: &str) -> LapisResult<ActionResult> {
-    Err(LapisError::Action(format!(
-        "Real execution not yet implemented for {action}"
-    )))
+fn real_result(desc: String) -> ActionResult {
+    ActionResult {
+        success: true,
+        simulated: false,
+        description: desc,
+    }
+}
+
+fn action_err(msg: String) -> LapisResult<ActionResult> {
+    Err(LapisError::Action(msg))
+}
+
+/// Map a key name string to an enigo Key variant.
+fn parse_key_name(name: &str) -> LapisResult<enigo::Key> {
+    use enigo::Key;
+    let lower = name.to_lowercase();
+    match lower.as_str() {
+        "enter" | "return" => Ok(Key::Return),
+        "tab" => Ok(Key::Tab),
+        "escape" | "esc" => Ok(Key::Escape),
+        "backspace" => Ok(Key::Backspace),
+        "delete" | "del" => Ok(Key::Delete),
+        "space" => Ok(Key::Space),
+        "up" | "uparrow" => Ok(Key::UpArrow),
+        "down" | "downarrow" => Ok(Key::DownArrow),
+        "left" | "leftarrow" => Ok(Key::LeftArrow),
+        "right" | "rightarrow" => Ok(Key::RightArrow),
+        "home" => Ok(Key::Home),
+        "end" => Ok(Key::End),
+        "pageup" => Ok(Key::PageUp),
+        "pagedown" => Ok(Key::PageDown),
+        "insert" => Ok(Key::Insert),
+        "capslock" => Ok(Key::CapsLock),
+        "numlock" => Ok(Key::Numlock),
+        "printscreen" | "printscr" => Ok(Key::PrintScr),
+        "pause" => Ok(Key::Pause),
+        "f1" => Ok(Key::F1),
+        "f2" => Ok(Key::F2),
+        "f3" => Ok(Key::F3),
+        "f4" => Ok(Key::F4),
+        "f5" => Ok(Key::F5),
+        "f6" => Ok(Key::F6),
+        "f7" => Ok(Key::F7),
+        "f8" => Ok(Key::F8),
+        "f9" => Ok(Key::F9),
+        "f10" => Ok(Key::F10),
+        "f11" => Ok(Key::F11),
+        "f12" => Ok(Key::F12),
+        "ctrl" | "control" => Ok(Key::Control),
+        "alt" => Ok(Key::Alt),
+        "shift" => Ok(Key::Shift),
+        "win" | "windows" | "super" | "meta" | "cmd" | "command" => Ok(Key::Meta),
+        s if s.len() == 1 => Ok(Key::Unicode(s.chars().next().unwrap())),
+        _ => Err(LapisError::Action(format!("Unknown key name: '{name}'"))),
+    }
+}
+
+/// Map a button name to an enigo Button variant.
+fn parse_button(name: &str) -> enigo::Button {
+    match name.to_lowercase().as_str() {
+        "right" => enigo::Button::Right,
+        "middle" => enigo::Button::Middle,
+        _ => enigo::Button::Left,
+    }
+}
+
+/// Create an Enigo instance.
+fn create_enigo() -> LapisResult<enigo::Enigo> {
+    enigo::Enigo::new(&enigo::Settings::default())
+        .map_err(|e| LapisError::Action(format!("Failed to create input controller: {e}")))
+}
+
+// ── Win32 window helpers (Windows only) ──
+
+#[cfg(windows)]
+mod win32 {
+    use common::{LapisError, LapisResult};
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM, WPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
+        IsWindowVisible, PostMessageW, SetForegroundWindow, ShowWindow,
+        SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE, WM_CLOSE,
+    };
+
+    /// Find a window by partial title match (case-insensitive).
+    pub fn find_window_by_title(title: &str) -> LapisResult<HWND> {
+        let search = title.to_lowercase();
+
+        struct SearchData {
+            search: String,
+            found: HWND,
+        }
+
+        let mut data = SearchData {
+            search,
+            found: HWND::default(),
+        };
+
+        unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+            let data = &mut *(lparam.0 as *mut SearchData);
+            if IsWindowVisible(hwnd).as_bool() {
+                let len = GetWindowTextLengthW(hwnd);
+                if len > 0 {
+                    let mut buf = vec![0u16; (len + 1) as usize];
+                    GetWindowTextW(hwnd, &mut buf);
+                    let window_title = String::from_utf16_lossy(&buf[..len as usize]);
+                    if window_title.to_lowercase().contains(&data.search) {
+                        data.found = hwnd;
+                        return BOOL(0); // stop enumeration
+                    }
+                }
+            }
+            BOOL(1) // continue
+        }
+
+        unsafe {
+            let _ = EnumWindows(
+                Some(enum_callback),
+                LPARAM(&mut data as *mut SearchData as isize),
+            );
+        }
+
+        if data.found == HWND::default() {
+            Err(LapisError::Action(format!(
+                "Window not found: '{title}'"
+            )))
+        } else {
+            Ok(data.found)
+        }
+    }
+
+    pub fn focus_window(hwnd: HWND) -> LapisResult<()> {
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+            if !SetForegroundWindow(hwnd).as_bool() {
+                return Err(LapisError::Action("SetForegroundWindow failed".into()));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn minimize_window(hwnd: HWND) -> LapisResult<()> {
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_MINIMIZE);
+        }
+        Ok(())
+    }
+
+    pub fn maximize_window(hwnd: HWND) -> LapisResult<()> {
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_MAXIMIZE);
+        }
+        Ok(())
+    }
+
+    pub fn close_window(hwnd: HWND) -> LapisResult<()> {
+        unsafe {
+            PostMessageW(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0))
+                .map_err(|e| LapisError::Action(format!("PostMessage WM_CLOSE failed: {e}")))?;
+        }
+        Ok(())
+    }
+
+    pub fn get_foreground_window() -> HWND {
+        unsafe { GetForegroundWindow() }
+    }
+
+    pub fn shell_open(path: &str) -> LapisResult<()> {
+        use std::os::windows::ffi::OsStrExt;
+        use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+        let wide_path: Vec<u16> = std::ffi::OsStr::new(path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let wide_open: Vec<u16> = std::ffi::OsStr::new("open")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        unsafe {
+            use windows::Win32::UI::Shell::ShellExecuteW;
+            let result = ShellExecuteW(
+                HWND::default(),
+                PCWSTR(wide_open.as_ptr()),
+                PCWSTR(wide_path.as_ptr()),
+                PCWSTR::null(),
+                PCWSTR::null(),
+                SW_SHOWNORMAL,
+            );
+            // ShellExecuteW returns > 32 on success
+            if result.0 as usize <= 32 {
+                return Err(LapisError::Action(format!(
+                    "ShellExecuteW failed for '{path}' (code: {:?})",
+                    result.0
+                )));
+            }
+        }
+        Ok(())
+    }
 }
 
 // ── Mouse Actions ──
@@ -101,8 +305,21 @@ impl Action for MouseClickAction {
             "SIM: {btn}-clicked at ({x}, {y})"
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("MouseClick")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        use enigo::{Coordinate, Direction, Mouse};
+        let x = param_i32(params, "x")?;
+        let y = param_i32(params, "y")?;
+        let button = parse_button(&param(params, "button"));
+        let btn_name = param(params, "button");
+        let btn_label = if btn_name.is_empty() { "left" } else { &btn_name };
+
+        let mut enigo = create_enigo()?;
+        enigo.move_mouse(x, y, Coordinate::Abs)
+            .map_err(|e| LapisError::Action(format!("move_mouse failed: {e}")))?;
+        enigo.button(button, Direction::Click)
+            .map_err(|e| LapisError::Action(format!("button click failed: {e}")))?;
+
+        Ok(real_result(format!("{btn_label}-clicked at ({x}, {y})")))
     }
 }
 
@@ -113,8 +330,14 @@ impl Action for MouseMoveAction {
         let y = param(params, "y");
         Ok(sim_result(format!("SIM: moved cursor to ({x}, {y})")))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("MouseMove")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        use enigo::{Coordinate, Mouse};
+        let x = param_i32(params, "x")?;
+        let y = param_i32(params, "y")?;
+        let mut enigo = create_enigo()?;
+        enigo.move_mouse(x, y, Coordinate::Abs)
+            .map_err(|e| LapisError::Action(format!("move_mouse failed: {e}")))?;
+        Ok(real_result(format!("moved cursor to ({x}, {y})")))
     }
 }
 
@@ -129,8 +352,27 @@ impl Action for MouseDragAction {
             "SIM: dragged from ({from_x}, {from_y}) to ({to_x}, {to_y})"
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("MouseDrag")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        use enigo::{Button, Coordinate, Direction, Mouse};
+        let from_x = param_i32(params, "from_x")?;
+        let from_y = param_i32(params, "from_y")?;
+        let to_x = param_i32(params, "to_x")?;
+        let to_y = param_i32(params, "to_y")?;
+
+        let mut enigo = create_enigo()?;
+        enigo.move_mouse(from_x, from_y, Coordinate::Abs)
+            .map_err(|e| LapisError::Action(format!("move_mouse failed: {e}")))?;
+        enigo.button(Button::Left, Direction::Press)
+            .map_err(|e| LapisError::Action(format!("button press failed: {e}")))?;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        enigo.move_mouse(to_x, to_y, Coordinate::Abs)
+            .map_err(|e| LapisError::Action(format!("move_mouse failed: {e}")))?;
+        enigo.button(Button::Left, Direction::Release)
+            .map_err(|e| LapisError::Action(format!("button release failed: {e}")))?;
+
+        Ok(real_result(format!(
+            "dragged from ({from_x}, {from_y}) to ({to_x}, {to_y})"
+        )))
     }
 }
 
@@ -145,8 +387,14 @@ impl Action for KeyboardTypeAction {
             "SIM: typed {len} characters: \"{text}\""
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("KeyboardType")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        use enigo::Keyboard;
+        let text = param(params, "text");
+        let len = text.len();
+        let mut enigo = create_enigo()?;
+        enigo.text(&text)
+            .map_err(|e| LapisError::Action(format!("text input failed: {e}")))?;
+        Ok(real_result(format!("typed {len} characters: \"{text}\"")))
     }
 }
 
@@ -156,8 +404,14 @@ impl Action for KeyboardPressAction {
         let key = param(params, "key");
         Ok(sim_result(format!("SIM: pressed key [{key}]")))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("KeyboardPress")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        use enigo::{Direction, Keyboard};
+        let key_name = param(params, "key");
+        let key = parse_key_name(&key_name)?;
+        let mut enigo = create_enigo()?;
+        enigo.key(key, Direction::Click)
+            .map_err(|e| LapisError::Action(format!("key press failed: {e}")))?;
+        Ok(real_result(format!("pressed key [{key_name}]")))
     }
 }
 
@@ -167,8 +421,37 @@ impl Action for KeyboardComboAction {
         let keys = param(params, "keys");
         Ok(sim_result(format!("SIM: pressed combo [{keys}]")))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("KeyboardCombo")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        use enigo::{Direction, Keyboard};
+        let keys_str = param(params, "keys");
+        let parts: Vec<&str> = keys_str.split('+').map(|s| s.trim()).collect();
+        if parts.is_empty() {
+            return action_err("No keys specified for combo".into());
+        }
+
+        let mut enigo = create_enigo()?;
+        let mut pressed_keys = Vec::new();
+
+        // Press all modifiers, then click the last key, then release modifiers
+        let (modifiers, main_key_str) = parts.split_at(parts.len() - 1);
+
+        for modifier in modifiers {
+            let key = parse_key_name(modifier)?;
+            enigo.key(key, Direction::Press)
+                .map_err(|e| LapisError::Action(format!("key press failed for '{modifier}': {e}")))?;
+            pressed_keys.push(key);
+        }
+
+        let main_key = parse_key_name(main_key_str[0])?;
+        enigo.key(main_key, Direction::Click)
+            .map_err(|e| LapisError::Action(format!("key click failed: {e}")))?;
+
+        // Release modifiers in reverse order
+        for key in pressed_keys.iter().rev() {
+            let _ = enigo.key(*key, Direction::Release);
+        }
+
+        Ok(real_result(format!("pressed combo [{keys_str}]")))
     }
 }
 
@@ -182,8 +465,19 @@ impl Action for WindowFocusAction {
             "SIM: focused window \"{title}\""
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("WindowFocus")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        #[cfg(windows)]
+        {
+            let title = param(params, "window_title");
+            let hwnd = win32::find_window_by_title(&title)?;
+            win32::focus_window(hwnd)?;
+            Ok(real_result(format!("focused window \"{title}\"")))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = params;
+            action_err("Window actions are only supported on Windows".into())
+        }
     }
 }
 
@@ -195,8 +489,19 @@ impl Action for WindowMinimizeAction {
             "SIM: minimized window \"{title}\""
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("WindowMinimize")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        #[cfg(windows)]
+        {
+            let title = param(params, "window_title");
+            let hwnd = win32::find_window_by_title(&title)?;
+            win32::minimize_window(hwnd)?;
+            Ok(real_result(format!("minimized window \"{title}\"")))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = params;
+            action_err("Window actions are only supported on Windows".into())
+        }
     }
 }
 
@@ -208,8 +513,19 @@ impl Action for WindowMaximizeAction {
             "SIM: maximized window \"{title}\""
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("WindowMaximize")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        #[cfg(windows)]
+        {
+            let title = param(params, "window_title");
+            let hwnd = win32::find_window_by_title(&title)?;
+            win32::maximize_window(hwnd)?;
+            Ok(real_result(format!("maximized window \"{title}\"")))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = params;
+            action_err("Window actions are only supported on Windows".into())
+        }
     }
 }
 
@@ -221,8 +537,27 @@ impl Action for WindowCloseAction {
             "SIM: closed window \"{title}\""
         )))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("WindowClose")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        #[cfg(windows)]
+        {
+            let title = param(params, "window_title");
+            let hwnd = if title == "active" || title.is_empty() {
+                let fg = win32::get_foreground_window();
+                if fg.0 == std::ptr::null_mut() {
+                    return action_err("No active window found".into());
+                }
+                fg
+            } else {
+                win32::find_window_by_title(&title)?
+            };
+            win32::close_window(hwnd)?;
+            Ok(real_result(format!("closed window \"{title}\"")))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = params;
+            action_err("Window actions are only supported on Windows".into())
+        }
     }
 }
 
@@ -234,8 +569,24 @@ impl Action for FileOpenAction {
         let path = param(params, "path");
         Ok(sim_result(format!("SIM: opened file \"{path}\"")))
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("FileOpen")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        let path = param(params, "path");
+        if path.is_empty() {
+            return action_err("Missing 'path' parameter for FileOpen".into());
+        }
+        #[cfg(windows)]
+        {
+            win32::shell_open(&path)?;
+            Ok(real_result(format!("opened file \"{path}\"")))
+        }
+        #[cfg(not(windows))]
+        {
+            std::process::Command::new("xdg-open")
+                .arg(&path)
+                .spawn()
+                .map_err(|e| LapisError::Action(format!("Failed to open file: {e}")))?;
+            Ok(real_result(format!("opened file \"{path}\"")))
+        }
     }
 }
 
@@ -256,9 +607,55 @@ impl Action for SystemLaunchAction {
             )))
         }
     }
-    fn execute_real(&self, _params: &ActionParams) -> LapisResult<ActionResult> {
-        not_implemented("SystemLaunch")
+    fn execute_real(&self, params: &ActionParams) -> LapisResult<ActionResult> {
+        let mut app = param(params, "application");
+
+        // If no explicit application, try to resolve from instruction text
+        if app.is_empty() {
+            let instruction = param(params, "instruction").to_lowercase();
+            app = resolve_app_from_instruction(&instruction);
+            if app.is_empty() {
+                return action_err(format!(
+                    "Cannot execute generic instruction in real mode: \"{instruction}\""
+                ));
+            }
+        }
+
+        std::process::Command::new(&app)
+            .spawn()
+            .map_err(|e| LapisError::Action(format!("Failed to launch '{app}': {e}")))?;
+
+        // Give the application time to start
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        Ok(real_result(format!("launched application \"{app}\"")))
     }
+}
+
+/// Try to resolve an application executable from a natural language instruction.
+fn resolve_app_from_instruction(instruction: &str) -> String {
+    let mappings: &[(&[&str], &str)] = &[
+        (&["notepad", "bloc de notas"], "notepad.exe"),
+        (&["calculator", "calculadora", "calc"], "calc.exe"),
+        (&["explorer", "explorador", "file manager", "archivos"], "explorer.exe"),
+        (&["browser", "navegador", "chrome"], "chrome.exe"),
+        (&["edge"], "msedge.exe"),
+        (&["firefox"], "firefox.exe"),
+        (&["paint"], "mspaint.exe"),
+        (&["cmd", "terminal", "command prompt", "consola"], "cmd.exe"),
+        (&["powershell"], "powershell.exe"),
+        (&["task manager", "administrador de tareas"], "taskmgr.exe"),
+        (&["settings", "configuracion", "configuración"], "ms-settings:"),
+        (&["word"], "winword.exe"),
+        (&["excel"], "excel.exe"),
+        (&["powerpoint"], "powerpnt.exe"),
+    ];
+
+    for (keywords, app) in mappings {
+        if keywords.iter().any(|kw| instruction.contains(kw)) {
+            return app.to_string();
+        }
+    }
+    String::new()
 }
 
 #[cfg(test)]
@@ -364,13 +761,6 @@ mod tests {
     }
 
     #[test]
-    fn real_execution_returns_error() {
-        let params = ActionParams::new();
-        let result = dispatch(&ActionType::MouseClick, &params, false);
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn all_action_types_dispatch() {
         let all = vec![
             ActionType::MouseClick, ActionType::MouseMove, ActionType::MouseDrag,
@@ -383,5 +773,32 @@ mod tests {
             assert!(result.simulated);
             assert!(result.success);
         }
+    }
+
+    #[test]
+    fn parse_key_name_common_keys() {
+        assert!(parse_key_name("Enter").is_ok());
+        assert!(parse_key_name("Tab").is_ok());
+        assert!(parse_key_name("Escape").is_ok());
+        assert!(parse_key_name("Ctrl").is_ok());
+        assert!(parse_key_name("Alt").is_ok());
+        assert!(parse_key_name("Shift").is_ok());
+        assert!(parse_key_name("Win").is_ok());
+        assert!(parse_key_name("F1").is_ok());
+        assert!(parse_key_name("F12").is_ok());
+        assert!(parse_key_name("a").is_ok());
+        assert!(parse_key_name("Z").is_ok());
+    }
+
+    #[test]
+    fn parse_key_name_unknown() {
+        assert!(parse_key_name("UnknownKeyXYZ").is_err());
+    }
+
+    #[test]
+    fn real_result_is_not_simulated() {
+        let r = real_result("test".into());
+        assert!(!r.simulated);
+        assert!(r.success);
     }
 }

@@ -124,6 +124,50 @@ public class AgentService : IDisposable
         return (width, height, description, model);
     }
 
+    /// <summary>Toggle simulation mode on the Core Agent.</summary>
+    public async Task<bool> ConfigureSimulationAsync(bool simulationMode)
+    {
+        try
+        {
+            var parameters = new JsonObject { ["simulation_mode"] = simulationMode };
+            await _client.SendRequestAsync("agent.configure", parameters);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Abort the currently executing instruction.</summary>
+    public async Task<bool> AbortAsync()
+    {
+        try
+        {
+            await _client.SendRequestAsync("agent.abort");
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Confirm or cancel pending real execution.</summary>
+    public async Task<bool> ConfirmExecutionAsync(bool confirmed)
+    {
+        try
+        {
+            var parameters = new JsonObject { ["confirmed"] = confirmed };
+            await _client.SendRequestAsync("agent.confirm_execution", parameters);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task DisconnectAsync()
     {
         await _client.DisconnectAsync();

@@ -46,13 +46,17 @@ pub async fn execute_step_with_perception(
         &format!("[{mode}] step {}: {:?} — {}", step.id, step.action_type, step.description),
     )?;
 
-    // Capture before screenshot
-    let before_screenshot = match perception::capture_screen() {
-        Ok(s) => Some(ScreenshotInfo { width: s.width, height: s.height }),
-        Err(e) => {
-            logging::log_event("executor", "warn", &format!("Before screenshot failed: {e}"))?;
-            None
+    // Capture before screenshot (only for real execution)
+    let before_screenshot = if !simulation {
+        match perception::capture_screen() {
+            Ok(s) => Some(ScreenshotInfo { width: s.width, height: s.height }),
+            Err(e) => {
+                logging::log_event("executor", "warn", &format!("Before screenshot failed: {e}"))?;
+                None
+            }
         }
+    } else {
+        None
     };
 
     // Execute the action
@@ -64,18 +68,22 @@ pub async fn execute_step_with_perception(
         &format!("step {}: {}", step.id, action_result.description),
     )?;
 
-    // Capture after screenshot
-    let after_screenshot = match perception::capture_screen() {
-        Ok(s) => Some(ScreenshotInfo { width: s.width, height: s.height }),
-        Err(e) => {
-            logging::log_event("executor", "warn", &format!("After screenshot failed: {e}"))?;
-            None
+    // Capture after screenshot (only for real execution)
+    let after_screenshot = if !simulation {
+        match perception::capture_screen() {
+            Ok(s) => Some(ScreenshotInfo { width: s.width, height: s.height }),
+            Err(e) => {
+                logging::log_event("executor", "warn", &format!("After screenshot failed: {e}"))?;
+                None
+            }
         }
+    } else {
+        None
     };
 
-    // Optionally verify with VLM
-    let verification = if let Some(vlm_cfg) = vlm_config {
-        if !step.expected_outcome.is_empty() {
+    // Optionally verify with VLM (skip in simulation mode — too slow for no benefit)
+    let verification = if !simulation {
+        if let (Some(vlm_cfg), false) = (vlm_config, step.expected_outcome.is_empty()) {
             match verify_step_outcome(step, vlm_cfg).await {
                 Ok(v) => Some(v),
                 Err(e) => {

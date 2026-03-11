@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
+actions = { path = "../actions" }
 planner = { path = "../planner" }
 executor = { path = "../executor" }
 perception = { path = "../perception" }
@@ -12,6 +13,7 @@ logging = { path = "../logging" }
 config = { path = "../config" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tokio = { version = "1", features = ["sync", "time"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
