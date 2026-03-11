@@ -16,8 +16,16 @@ pub struct AppConfig {
     pub log_level: String,
     /// VLM endpoint URL (e.g. Ollama).
     pub vlm_endpoint: String,
-    /// VLM model name (e.g. "llava:latest").
+    /// VLM model name (e.g. "moondream").
     pub vlm_model: String,
+    /// Reasoning LLM provider: "claude", "openai", "gemini", "custom".
+    pub reasoning_provider: String,
+    /// Reasoning LLM API key.
+    pub reasoning_api_key: String,
+    /// Reasoning LLM model name (e.g. "claude-sonnet-4-20250514").
+    pub reasoning_model: String,
+    /// Reasoning LLM endpoint (auto-set per provider, overridable for "custom").
+    pub reasoning_endpoint: String,
 }
 
 impl Default for AppConfig {
@@ -29,6 +37,10 @@ impl Default for AppConfig {
             log_level: "info".into(),
             vlm_endpoint: "http://localhost:11434".into(),
             vlm_model: "moondream".into(),
+            reasoning_provider: "claude".into(),
+            reasoning_api_key: String::new(),
+            reasoning_model: "claude-sonnet-4-20250514".into(),
+            reasoning_endpoint: "https://api.anthropic.com".into(),
         }
     }
 }

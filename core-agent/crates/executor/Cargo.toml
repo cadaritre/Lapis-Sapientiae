@@ -7,4 +7,7 @@ edition = "2021"
 common = { path = "../common" }
 actions = { path = "../actions" }
 planner = { path = "../planner" }
+perception = { path = "../perception" }
 logging = { path = "../logging" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

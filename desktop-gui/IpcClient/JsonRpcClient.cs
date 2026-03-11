@@ -66,7 +66,7 @@ public class JsonRpcClient : IDisposable
         var line = request.ToJsonString();
         await _writer.WriteLineAsync(line);
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(300));
         timeout.Token.Register(() => tcs.TrySetCanceled());
 
         try

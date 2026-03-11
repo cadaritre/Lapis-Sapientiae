@@ -408,7 +408,10 @@ dependencies = [
  "actions",
  "common",
  "logging",
+ "perception",
  "planner",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1283,9 +1286,11 @@ dependencies = [
  "config",
  "executor",
  "logging",
+ "perception",
  "planner",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -1367,8 +1372,11 @@ version = "0.1.0"
 dependencies = [
  "actions",
  "common",
+ "config",
+ "reqwest",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

@@ -2,11 +2,89 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="LapisGui.App"
              xmlns:local="using:LapisGui"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Light">
 
     <Application.Resources>
-        <FontFamily x:Key="InterFont">avares://Avalonia.Fonts.Inter#Inter</FontFamily>
-        <FontFamily x:Key="MonoFont">JetBrains Mono, Cascadia Code, Consolas, monospace</FontFamily>
+        <ResourceDictionary>
+            <FontFamily x:Key="InterFont">avares://Avalonia.Fonts.Inter#Inter</FontFamily>
+            <FontFamily x:Key="MonoFont">JetBrains Mono, Cascadia Code, Consolas, monospace</FontFamily>
+
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- ══════════ LIGHT THEME ══════════ -->
+                <ResourceDictionary x:Key="Light">
+                    <!-- Surfaces -->
+                    <SolidColorBrush x:Key="WindowBg" Color="#FAFBFC"/>
+                    <SolidColorBrush x:Key="SidebarBg" Color="#F2F4F7"/>
+                    <SolidColorBrush x:Key="TitleBarBg" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="CardBg" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="CardBorder" Color="#E5E7EB"/>
+                    <SolidColorBrush x:Key="InputBg" Color="#F5F6F8"/>
+                    <SolidColorBrush x:Key="InputBorder" Color="#DDE0E6"/>
+                    <SolidColorBrush x:Key="InputFocusBorder" Color="#6C8AFF"/>
+                    <SolidColorBrush x:Key="Divider" Color="#E5E7EB"/>
+                    <SolidColorBrush x:Key="TerminalBg" Color="#F0F1F4"/>
+                    <SolidColorBrush x:Key="SettingsCardBg" Color="#F5F6F8"/>
+                    <!-- Text -->
+                    <SolidColorBrush x:Key="TextPrimary" Color="#0F1118"/>
+                    <SolidColorBrush x:Key="TextSecondary" Color="#3D4255"/>
+                    <SolidColorBrush x:Key="TextMuted" Color="#6B7084"/>
+                    <SolidColorBrush x:Key="TextOnAccent" Color="#FFFFFF"/>
+                    <!-- Accent (brand) -->
+                    <SolidColorBrush x:Key="AccentBlue" Color="#6C8AFF"/>
+                    <SolidColorBrush x:Key="AccentBlueHover" Color="#5570E6"/>
+                    <SolidColorBrush x:Key="AccentOrange" Color="#F0A050"/>
+                    <SolidColorBrush x:Key="AccentGreen" Color="#3AAF6A"/>
+                    <SolidColorBrush x:Key="AccentRed" Color="#E05050"/>
+                    <!-- Interactive -->
+                    <SolidColorBrush x:Key="HoverBg" Color="#ECEDF2"/>
+                    <SolidColorBrush x:Key="SelectedBg" Color="#E6E9F0"/>
+                    <!-- Ollama warning -->
+                    <SolidColorBrush x:Key="WarningBg" Color="#FFF3E0"/>
+                    <SolidColorBrush x:Key="WarningText" Color="#7A4500"/>
+                    <!-- Chat role colors -->
+                    <SolidColorBrush x:Key="SystemMsgColor" Color="#6B7084"/>
+                    <SolidColorBrush x:Key="DeleteBtnBg" Color="#FDE8E8"/>
+                    <SolidColorBrush x:Key="DeleteBtnBorder" Color="#F5C2C2"/>
+                </ResourceDictionary>
+
+                <!-- ══════════ DARK THEME ══════════ -->
+                <ResourceDictionary x:Key="Dark">
+                    <!-- Surfaces -->
+                    <SolidColorBrush x:Key="WindowBg" Color="#0D0F14"/>
+                    <SolidColorBrush x:Key="SidebarBg" Color="#0A0C10"/>
+                    <SolidColorBrush x:Key="TitleBarBg" Color="#0D0F14"/>
+                    <SolidColorBrush x:Key="CardBg" Color="#12141A"/>
+                    <SolidColorBrush x:Key="CardBorder" Color="#1E2029"/>
+                    <SolidColorBrush x:Key="InputBg" Color="#161920"/>
+                    <SolidColorBrush x:Key="InputBorder" Color="#2A2D38"/>
+                    <SolidColorBrush x:Key="InputFocusBorder" Color="#6C8AFF"/>
+                    <SolidColorBrush x:Key="Divider" Color="#1A1D27"/>
+                    <SolidColorBrush x:Key="TerminalBg" Color="#050710"/>
+                    <SolidColorBrush x:Key="SettingsCardBg" Color="#0D0F14"/>
+                    <!-- Text -->
+                    <SolidColorBrush x:Key="TextPrimary" Color="#E2E4E9"/>
+                    <SolidColorBrush x:Key="TextSecondary" Color="#8B8FA3"/>
+                    <SolidColorBrush x:Key="TextMuted" Color="#6B7084"/>
+                    <SolidColorBrush x:Key="TextOnAccent" Color="#FFFFFF"/>
+                    <!-- Accent (brand) -->
+                    <SolidColorBrush x:Key="AccentBlue" Color="#6C8AFF"/>
+                    <SolidColorBrush x:Key="AccentBlueHover" Color="#8AA4FF"/>
+                    <SolidColorBrush x:Key="AccentOrange" Color="#F0A050"/>
+                    <SolidColorBrush x:Key="AccentGreen" Color="#50C878"/>
+                    <SolidColorBrush x:Key="AccentRed" Color="#E05050"/>
+                    <!-- Interactive -->
+                    <SolidColorBrush x:Key="HoverBg" Color="#1E2029"/>
+                    <SolidColorBrush x:Key="SelectedBg" Color="#1A1D27"/>
+                    <!-- Ollama warning -->
+                    <SolidColorBrush x:Key="WarningBg" Color="#2D1F0E"/>
+                    <SolidColorBrush x:Key="WarningText" Color="#F0A050"/>
+                    <!-- Chat role colors -->
+                    <SolidColorBrush x:Key="SystemMsgColor" Color="#4A5068"/>
+                    <SolidColorBrush x:Key="DeleteBtnBg" Color="#1A1020"/>
+                    <SolidColorBrush x:Key="DeleteBtnBorder" Color="#2A1525"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 
     <Application.DataTemplates>
@@ -17,29 +95,29 @@
         <FluentTheme />
 
         <Style Selector="Window">
-            <Setter Property="Background" Value="#0d0f14"/>
+            <Setter Property="Background" Value="{DynamicResource WindowBg}"/>
             <Setter Property="FontFamily" Value="{StaticResource InterFont}"/>
-            <Setter Property="Foreground" Value="#e2e4e9"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
         </Style>
 
         <!-- Global TextBox styling -->
         <Style Selector="TextBox">
-            <Setter Property="Background" Value="#161920"/>
-            <Setter Property="BorderBrush" Value="#2a2d38"/>
-            <Setter Property="Foreground" Value="#e2e4e9"/>
+            <Setter Property="Background" Value="{DynamicResource InputBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="12,10"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
         <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#6c8aff"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputFocusBorder}"/>
             <Setter Property="BorderThickness" Value="1.5"/>
         </Style>
 
         <!-- Primary button -->
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="#6c8aff"/>
-            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccent}"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="20,10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -47,14 +125,14 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
         <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#8aa4ff"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
         </Style>
 
         <!-- Card panel -->
         <Style Selector="Border.card">
-            <Setter Property="Background" Value="#12141a"/>
+            <Setter Property="Background" Value="{DynamicResource CardBg}"/>
             <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="BorderBrush" Value="#1e2029"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
@@ -62,7 +140,7 @@
         <Style Selector="TextBlock.section-header">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#6b7084"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
 
@@ -110,10 +188,30 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.window-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1e2029"/>
+            <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
         </Style>
         <Style Selector="Button.window-close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#c93b3b"/>
+        </Style>
+
+        <!-- ComboBox styling -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{DynamicResource InputBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <!-- RadioButton styling -->
+        <Style Selector="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <!-- ToggleSwitch styling -->
+        <Style Selector="ToggleSwitch">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
         </Style>
     </Application.Styles>
 

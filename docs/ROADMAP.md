@@ -147,73 +147,123 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 6 — Basic perception (screenshots) ✓
+## Phase 6 — Perception + VLM integration ✓
 
 **Status: COMPLETE**
 
-**Objective:** Capture screenshots and send them to the GUI for display.
+**Objective:** Capture screenshots, send to GUI, and analyze via local VLM.
 
 **Deliverables:**
-- Perception module captures the screen (or a window) as PNG
-- Screenshots are sent to the GUI via IPC
-- GUI displays the latest screenshot in the viewer panel
-- Screenshots are associated with plan steps in the log
+- Perception module captures the screen via xcap, auto-downscales to 1080p max
+- Screenshots sent to GUI via IPC as base64 PNG
+- GUI displays the latest screenshot in a tabbed right panel
+- VLM analysis via Ollama API (moondream model)
+- Embedded terminal panels in GUI for Core Agent and Ollama output
+- Process manager with stdout/stderr capture, external Ollama detection
+- Service status indicators (green/red dots) in sidebar
+- Restart/stop controls for Core Agent and Ollama
 
 **Definition of done:**
-- Core captures a screenshot on demand.
-- GUI displays it within 1 second.
-- Screenshots are logged with timestamps.
+- Core captures screenshots on demand (downscaled to 1080p). ✓
+- GUI displays screenshots within 1 second. ✓
+- VLM describes screen content via moondream model. ✓
+- All background processes visible in GUI terminals. ✓
 
 **Risks:**
 - Platform-specific screen capture APIs.
-- Large image transfer over IPC.
+- VLM processing time (addressed with 300s timeout).
 
 **Dependencies:** Phase 5.
 
 ---
 
-## Phase 7 — Planner integration
+## Phase 7 — LLM reasoning integration ✓
 
-**Objective:** Connect the planner to an LLM for real task decomposition.
+**Status: COMPLETE**
+
+**Objective:** Connect the planner to a cloud LLM for intelligent task decomposition.
 
 **Deliverables:**
-- Config module supports API key and model selection
-- Planner sends user instructions + current screenshot to the LLM
-- Planner receives structured plan (list of steps with action types)
-- Plan is validated before execution
-- Fallback to hardcoded plan if LLM is unavailable
+- Config module supports reasoning provider, API key, model, and endpoint
+- Multi-provider support: Claude, OpenAI, Gemini, and custom (OpenAI-compatible)
+- Planner sends user instructions + optional screen context to the LLM
+- LLM returns structured JSON plan with action types, parameters, descriptions
+- Automatic keyword-based fallback if LLM is unavailable or API key not set
+- `agent.configure_reasoning` IPC method for runtime config from GUI
+- GUI Settings panel with provider selection, API key input, and model auto-mapping
+- Reasoning config sent to Core Agent on connection and settings save
 
 **Definition of done:**
-- User gives a natural language instruction.
-- Planner produces a structured, multi-step plan via LLM.
-- Plan is displayed in GUI and logged.
+- User enters API key in GUI settings. ✓
+- Planner sends instruction to Claude API and receives structured plan. ✓
+- Plan steps are executed and displayed in GUI chat. ✓
+- Falls back to keyword planner if no API key configured. ✓
 
 **Risks:**
-- LLM response format variability.
-- API rate limits and latency.
+- LLM response format variability (mitigated with JSON parsing + markdown stripping).
+- API rate limits and latency (60s timeout per request).
 
 **Dependencies:** Phase 6.
 
 ---
 
-## Phase 8 — Visual executor integration
+## Phase 8 — Visual executor integration ✓
+
+**Status: COMPLETE**
 
 **Objective:** Executor uses perception to verify each step before and after execution.
 
 **Deliverables:**
-- Executor takes a screenshot before each action
-- Executor takes a screenshot after each action
-- Executor compares expected vs. actual state (basic heuristic or LLM-based)
-- If a step fails, executor reports to planner for re-planning
+- `execute_step_with_perception()` captures before/after screenshots for each step
+- VLM-based verification: after each action, analyzes screen to confirm expected outcome
+- `VerificationResult` struct with `matches_expected`, `description`, `model`
+- Orchestrator reports verification status in step notifications (VERIFIED/MISMATCH)
+- Tracks verified and failed step counts in execution summary
+- Backward-compatible `execute_step()` preserved for simple execution
 
 **Definition of done:**
-- Each simulated action is bracketed by before/after screenshots.
-- Executor detects at least one type of failure (e.g., expected window not found).
+- Each action is bracketed by before/after screenshots. ✓
+- VLM analyzes screen after action to verify expected outcome. ✓
+- Verification results included in step notifications to GUI. ✓
 
 **Risks:**
-- UI state comparison is inherently fragile.
+- VLM verification adds latency per step (mitigated: optional, only when VLM available).
+- UI state comparison via VLM is heuristic-based (YES/NO parsing).
 
 **Dependencies:** Phase 7.
+
+---
+
+## Phase 8.5 — Settings overhaul and theming ✓
+
+**Status: COMPLETE**
+
+**Objective:** Complete redesign of the settings panel with light/dark theme support, local/cloud model selection, and Ollama management.
+
+**Deliverables:**
+- Light/dark theme system via Avalonia `ThemeDictionaries` with named brush resources
+- Default light mode with clean white design, blue (`#6C8AFF`) and orange (`#F0A050`) brand accents
+- Dark mode with deep navy/charcoal palette, toggled via sun/moon switch in settings
+- All hardcoded colors replaced with `{DynamicResource}` throughout the entire GUI
+- Vision model settings: Local (Ollama) or Cloud (OpenAI/Gemini/Custom) with provider selector
+- Reasoning model settings: Local (Ollama) or Cloud (Claude/OpenAI/Gemini/Custom)
+- Ollama model pull terminal: type model name, click Pull, see real-time download progress
+- Ollama installation detection: orange warning banner when Ollama is not installed
+- API key fields with visibility toggle for both vision and reasoning cloud providers
+- Settings save sends appropriate config to Core Agent based on local/cloud selection
+
+**Definition of done:**
+- App opens in light mode by default. ✓
+- Toggle switches entire UI to dark mode without restart. ✓
+- Local/Cloud radio toggles show/hide relevant fields. ✓
+- Pull terminal runs `ollama pull <model>` with live output. ✓
+- Ollama detection shows warning when not installed. ✓
+- Settings save routes config correctly for local vs cloud. ✓
+
+**Risks:**
+- None significant; purely UI-side changes.
+
+**Dependencies:** Phase 8.
 
 ---
 

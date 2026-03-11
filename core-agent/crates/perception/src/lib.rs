@@ -108,7 +108,7 @@ pub async fn analyze_image(
     };
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
+        .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| LapisError::Perception(format!("HTTP client error: {e}")))?;
 

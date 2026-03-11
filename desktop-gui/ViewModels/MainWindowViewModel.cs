@@ -2,8 +2,10 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -97,6 +99,31 @@ public partial class ConversationItem : ObservableObject
     }
 }
 
+/// <summary>Represents a line of output from a managed process.</summary>
+public partial class TerminalLine : ObservableObject
+{
+    public string Text { get; init; } = "";
+    public IBrush Color { get; init; } = Brushes.Gray;
+
+    public static TerminalLine Normal(string text) => new()
+    {
+        Text = text,
+        Color = new SolidColorBrush(Avalonia.Media.Color.Parse("#8b8fa3"))
+    };
+
+    public static TerminalLine Status(string text) => new()
+    {
+        Text = text,
+        Color = new SolidColorBrush(Avalonia.Media.Color.Parse("#50c878"))
+    };
+
+    public static TerminalLine Error(string text) => new()
+    {
+        Text = text,
+        Color = new SolidColorBrush(Avalonia.Media.Color.Parse("#e05050"))
+    };
+}
+
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly AgentService _agent = new();
@@ -115,6 +142,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isSettingsOpen;
 
     [ObservableProperty]
+    private bool _isDarkMode;
+
+    partial void OnIsDarkModeChanged(bool value)
+    {
+        if (Application.Current is not null)
+            Application.Current.RequestedThemeVariant = value ? ThemeVariant.Dark : ThemeVariant.Light;
+    }
+
+    [ObservableProperty]
     private bool _isSending;
 
     [ObservableProperty]
@@ -126,9 +162,28 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _screenshotInfo = "No capture";
 
+    // ── Service status ──
+
+    [ObservableProperty]
+    private bool _isCoreAgentRunning;
+
+    [ObservableProperty]
+    private bool _isOllamaRunning;
+
+    // ── Right panel tab selection: 0=Screenshot, 1=Services, 2=Logs ──
+
+    [ObservableProperty]
+    private int _rightPanelTab;
+
     public SettingsViewModel Settings { get; } = new();
 
     public ObservableCollection<ConversationItem> Conversations { get; } = new();
+
+    /// <summary>Terminal output from Core Agent process.</summary>
+    public ObservableCollection<TerminalLine> CoreAgentOutput { get; } = new();
+
+    /// <summary>Terminal output from Ollama process.</summary>
+    public ObservableCollection<TerminalLine> OllamaOutput { get; } = new();
 
     public MainWindowViewModel()
     {
@@ -147,6 +202,38 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 Dispatcher.UIThread.Post(() => HandleStepProgress(paramsNode));
             }
+        };
+
+        // Wire up process manager events
+        _processManager.OutputReceived += (source, line) =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                var collection = source == "Core Agent" ? CoreAgentOutput : OllamaOutput;
+                var entry = line.StartsWith("---")
+                    ? TerminalLine.Status(line)
+                    : line.Contains("error", StringComparison.OrdinalIgnoreCase) || line.Contains("ERR")
+                        ? TerminalLine.Error(line)
+                        : TerminalLine.Normal(line);
+                collection.Add(entry);
+                // Keep max 500 lines per terminal
+                while (collection.Count > 500) collection.RemoveAt(0);
+            });
+        };
+
+        _processManager.ProcessStateChanged += (source, running) =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (source == "Core Agent")
+                    IsCoreAgentRunning = running;
+                else
+                    IsOllamaRunning = running;
+
+                LogEntries.Add(running
+                    ? LogEntry.Info($"{source} started")
+                    : LogEntry.Warn($"{source} stopped"));
+            });
         };
 
         // Create default conversation
@@ -196,24 +283,34 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Start Ollama server
         _processManager.StartOllama();
-        LogEntries.Add(LogEntry.Info("Started Ollama terminal"));
+        LogEntries.Add(LogEntry.Info("Starting Ollama server..."));
+
+        // Wait a moment for Ollama to initialize
+        await Task.Delay(2000);
 
         // Start Core Agent
         if (File.Exists(coreAgentPath))
         {
             _processManager.StartCoreAgent(coreAgentPath);
-            LogEntries.Add(LogEntry.Info("Started Core Agent terminal"));
+            LogEntries.Add(LogEntry.Info("Starting Core Agent..."));
         }
         else
         {
             LogEntries.Add(LogEntry.Warn($"Core Agent not found at: {coreAgentPath}"));
+            ChatMessages.Add(ChatMessage.System($"Core Agent not found. Build with:\ncd core-agent && cargo build --release"));
         }
 
         // Wait for services to initialize
         await Task.Delay(3000);
         ChatMessages.Add(ChatMessage.System("Services launched. Connecting..."));
 
-        await TryConnectAsync();
+        // Retry connection a few times
+        for (int i = 0; i < 3; i++)
+        {
+            var connected = await TryConnectAsync();
+            if (connected) break;
+            await Task.Delay(2000);
+        }
     }
 
     /// <summary>Kill all managed processes on shutdown.</summary>
@@ -223,7 +320,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _agent.Dispose();
     }
 
-    private async Task TryConnectAsync()
+    private async Task<bool> TryConnectAsync()
     {
         LogEntries.Add(LogEntry.Info("Connecting to Core Agent on port 9100..."));
         var connected = await _agent.ConnectAsync();
@@ -233,18 +330,37 @@ public partial class MainWindowViewModel : ViewModelBase
             ConnectionStatus = "Connected";
             ChatMessages.Add(ChatMessage.System("Connected to Core Agent."));
             LogEntries.Add(LogEntry.Info("Connected to Core Agent"));
+
+            // Send current VLM config
+            await _agent.ConfigureAsync(Settings.VisionEndpoint, Settings.VisionModel);
+
+            // Send reasoning config if API key is set
+            if (!string.IsNullOrEmpty(Settings.ApiKey))
+            {
+                await _agent.ConfigureReasoningAsync(
+                    Settings.SelectedProvider, Settings.ApiKey, Settings.ReasoningModel);
+            }
+
+            return true;
         }
         else
         {
             ConnectionStatus = "Disconnected";
-            LogEntries.Add(LogEntry.Warn("Core Agent not available — running in offline mode"));
+            LogEntries.Add(LogEntry.Warn("Core Agent not available — retrying..."));
+            return false;
         }
     }
 
+    // ── Commands ──
+
     [RelayCommand]
-    private void ToggleSettings()
+    private async Task ToggleSettings()
     {
         IsSettingsOpen = !IsSettingsOpen;
+        if (IsSettingsOpen)
+        {
+            await Settings.CheckOllamaInstalledAsync();
+        }
     }
 
     [RelayCommand]
@@ -253,13 +369,51 @@ public partial class MainWindowViewModel : ViewModelBase
         IsSettingsOpen = false;
         LogEntries.Add(LogEntry.Info("Settings saved"));
 
-        if (_agent.IsConnected)
+        if (!_agent.IsConnected) return;
+
+        // Vision config: local uses Ollama endpoint, cloud uses cloud provider endpoint
+        if (Settings.IsVisionLocal)
         {
             var ok = await _agent.ConfigureAsync(Settings.VisionEndpoint, Settings.VisionModel);
             if (ok)
-                LogEntries.Add(LogEntry.Info($"VLM configured: {Settings.VisionModel} @ {Settings.VisionEndpoint}"));
+                LogEntries.Add(LogEntry.Info($"VLM configured (local): {Settings.VisionModel} @ {Settings.VisionEndpoint}"));
             else
                 LogEntries.Add(LogEntry.Warn("Failed to send VLM config to Core Agent"));
+        }
+        else if (!string.IsNullOrEmpty(Settings.VisionCloudApiKey))
+        {
+            // For cloud vision, we send via configure with cloud endpoint
+            var endpoint = Settings.VisionCloudProvider switch
+            {
+                "OpenAI" => "https://api.openai.com",
+                "Gemini" => "https://generativelanguage.googleapis.com",
+                _ => Settings.VisionEndpoint
+            };
+            var ok = await _agent.ConfigureAsync(endpoint, Settings.VisionCloudModel);
+            if (ok)
+                LogEntries.Add(LogEntry.Info($"VLM configured (cloud): {Settings.VisionCloudProvider} / {Settings.VisionCloudModel}"));
+            else
+                LogEntries.Add(LogEntry.Warn("Failed to send cloud VLM config to Core Agent"));
+        }
+
+        // Reasoning config: local uses Ollama, cloud uses cloud provider
+        if (Settings.IsReasoningLocal)
+        {
+            var rok = await _agent.ConfigureReasoningAsync(
+                "ollama", string.Empty, Settings.ReasoningLocalModel);
+            if (rok)
+                LogEntries.Add(LogEntry.Info($"Reasoning configured (local): {Settings.ReasoningLocalModel}"));
+            else
+                LogEntries.Add(LogEntry.Warn("Failed to send local reasoning config to Core Agent"));
+        }
+        else if (!string.IsNullOrEmpty(Settings.ApiKey))
+        {
+            var rok = await _agent.ConfigureReasoningAsync(
+                Settings.SelectedProvider, Settings.ApiKey, Settings.ReasoningModel);
+            if (rok)
+                LogEntries.Add(LogEntry.Info($"Reasoning configured (cloud): {Settings.SelectedProvider} / {Settings.ReasoningModel}"));
+            else
+                LogEntries.Add(LogEntry.Warn("Failed to send reasoning config to Core Agent"));
         }
     }
 
@@ -339,7 +493,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 ChatMessages.Add(ChatMessage.Agent($"[VLM: {model}]\n{description}"));
                 LogEntries.Add(LogEntry.Info($"VLM analysis complete ({model})"));
 
-                // Also capture the screenshot for display
                 await CaptureScreenshot();
             }
             else
@@ -353,6 +506,39 @@ public partial class MainWindowViewModel : ViewModelBase
             ChatMessages.Add(ChatMessage.Agent($"VLM error: {ex.Message}"));
             LogEntries.Add(LogEntry.Error($"VLM error: {ex.Message}"));
         }
+    }
+
+    [RelayCommand]
+    private void RestartCoreAgent()
+    {
+        _processManager.StopCoreAgent();
+        var guiDir = AppDomain.CurrentDomain.BaseDirectory;
+        var coreAgentPath = Path.GetFullPath(Path.Combine(guiDir, "..", "..", "..", "..", "core-agent", "target", "release", "lapis-core.exe"));
+        if (File.Exists(coreAgentPath))
+        {
+            CoreAgentOutput.Clear();
+            _processManager.StartCoreAgent(coreAgentPath);
+        }
+    }
+
+    [RelayCommand]
+    private void RestartOllama()
+    {
+        _processManager.StopOllama();
+        OllamaOutput.Clear();
+        _processManager.StartOllama();
+    }
+
+    [RelayCommand]
+    private void StopCoreAgent()
+    {
+        _processManager.StopCoreAgent();
+    }
+
+    [RelayCommand]
+    private void StopOllama()
+    {
+        _processManager.StopOllama();
     }
 
     public IBrush StatusColor => ConnectionStatus == "Connected"
@@ -384,7 +570,6 @@ public partial class MainWindowViewModel : ViewModelBase
         ChatMessages.Add(ChatMessage.User(instruction));
         LogEntries.Add(LogEntry.Info($"Sending: {instruction}"));
 
-        // Update conversation subtitle with last message
         if (SelectedConversation is not null)
         {
             SelectedConversation.Subtitle = instruction.Length > 30
@@ -406,7 +591,6 @@ public partial class MainWindowViewModel : ViewModelBase
             ChatMessages.Add(ChatMessage.Agent(response));
             LogEntries.Add(LogEntry.Info("Agent responded"));
 
-            // Capture screenshot after instruction completes
             await CaptureScreenshot();
         }
         catch (Exception ex)

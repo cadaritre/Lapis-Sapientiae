@@ -143,12 +143,13 @@ Structured logging for auditability.
 Runtime configuration loaded at startup.
 
 - Simulation mode toggle (default: on).
-- LLM provider, model, and API key.
-- IPC transport (named pipe path or TCP port).
+- Vision model: endpoint and model name (default: Ollama `moondream`).
+- Reasoning provider, API key, model, and endpoint (supports Claude, OpenAI, Gemini, custom).
+- IPC transport: local TCP on port 9100.
 - Logging level and output path.
 - Action rate limits.
 
-Config is loaded from a TOML file and can be overridden by environment variables.
+Config can be updated at runtime via `agent.configure` and `agent.configure_reasoning` IPC methods.
 
 ### IPC
 
@@ -167,45 +168,21 @@ JSON-RPC 2.0 server.
 
 Avalonia XAML views:
 
-- **MainWindow** — shell with panels.
-- **ChatView** — message input and conversation history.
-- **ScreenshotView** — displays the latest captured screenshot.
-- **LogView** — scrolling log with filtering.
-- **SettingsView** — configuration editor.
+- **MainWindow** — shell with sidebar, chat panel, settings overlay, and tabbed right panel.
+- All colors use `{DynamicResource}` keys from `App.axaml` ThemeDictionaries for theme switching.
+- Light/dark theme controlled via `Application.Current.RequestedThemeVariant`.
 
 ### ViewModels
 
-MVVM view models:
+MVVM view models (CommunityToolkit.Mvvm):
 
-- **MainWindowViewModel** — coordinates panels.
-- **ChatViewModel** — manages messages, sends instructions to core.
-- **ScreenshotViewModel** — receives and displays screenshots.
-- **LogViewModel** — receives and filters log entries.
-- **SettingsViewModel** — reads/writes configuration.
+- **MainWindowViewModel** — coordinates panels, manages process lifecycle, theme toggle (`IsDarkMode`), settings open/save.
+- **SettingsViewModel** — vision local/cloud toggle, reasoning local/cloud toggle, Ollama model pull commands, Ollama detection, API key management.
 
 ### Services
 
-Application services:
-
-- **AgentService** — high-level API over IPC (send instruction, get status, abort).
-- **LogService** — receives log stream, stores in memory, notifies views.
-
-### IpcClient
-
-JSON-RPC client that mirrors the Core's IPC server:
-
-- Connects to named pipe or TCP.
-- Sends requests, receives responses and notifications.
-- Handles reconnection.
-
-### State
-
-Application state management:
-
-- Current connection status.
-- Task history.
-- Active plan and step.
-- Configuration cache.
+- **AgentService** — JSON-RPC client over TCP port 9100. Methods: `agent.ping`, `agent.instruct`, `agent.configure`, `agent.configure_reasoning`, `agent.screenshot`, `agent.analyze_screen`.
+- **ProcessManager** — manages Ollama and Core Agent child processes with stdout/stderr capture and lifecycle events.
 
 ---
 

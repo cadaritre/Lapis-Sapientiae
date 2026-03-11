@@ -1,9 +1,13 @@
 # Rust
 core-agent/target/
+target/
 
 # .NET / Avalonia
 desktop-gui/bin/
 desktop-gui/obj/
+[Bb]in/
+[Oo]bj/
+TestResults/
 
 # IDE
 .vs/
@@ -11,12 +15,50 @@ desktop-gui/obj/
 .idea/
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
 
 # OS
 Thumbs.db
 Desktop.ini
 .DS_Store
+$RECYCLE.BIN/
+
+# Logs
+*.log
+*.out
+*.err
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temp / cache
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.cache/
+.tmp/
+tmp/
+temp/
 
 # Environment
 .env
 *.local
+
+# Language / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+.coverage
+coverage/
+dist/
+build/
+node_modules/
+*.tsbuildinfo

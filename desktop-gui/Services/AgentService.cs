@@ -87,6 +87,26 @@ public class AgentService : IDisposable
         }
     }
 
+    /// <summary>Send reasoning LLM configuration to the Core Agent.</summary>
+    public async Task<bool> ConfigureReasoningAsync(string provider, string apiKey, string model)
+    {
+        try
+        {
+            var parameters = new JsonObject
+            {
+                ["provider"] = provider,
+                ["api_key"] = apiKey,
+                ["model"] = model
+            };
+            await _client.SendRequestAsync("agent.configure_reasoning", parameters);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>Capture and analyze the screen using the configured VLM.</summary>
     public async Task<(int width, int height, string description, string model)?> AnalyzeScreenAsync(string? prompt = null)
     {

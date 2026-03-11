@@ -21,131 +21,148 @@
     <DockPanel>
 
         <!-- Custom Title Bar -->
-        <Border DockPanel.Dock="Top" Height="40" Background="#0d0f14"
+        <Border DockPanel.Dock="Top" Height="40" Background="{DynamicResource TitleBarBg}"
                 PointerPressed="OnTitleBarPointerPressed">
             <Grid ColumnDefinitions="Auto,*,Auto">
-
-                <!-- App identity -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
                             Margin="16,0,0,0" VerticalAlignment="Center">
                     <Border Width="20" Height="20" CornerRadius="4"
-                            Background="#6c8aff" Opacity="0.9">
-                        <TextBlock Text="&#x25C6;" FontSize="12"
-                                   Foreground="#ffffff"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                            Background="{DynamicResource AccentBlue}" Opacity="0.9">
+                        <TextBlock Text="&#x25C6;" FontSize="12" Foreground="#ffffff"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <TextBlock Text="Lapis Sapientiae" FontSize="13" FontWeight="SemiBold"
-                               Foreground="#8b8fa3" VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Drag region (transparent, fills center) -->
                 <Border Grid.Column="1" Background="Transparent"/>
 
-                <!-- Status indicators + window controls -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12"
                             Margin="0,0,0,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Ellipse Classes="status-dot"
-                                 Fill="{Binding StatusColor}"/>
+                        <Ellipse Classes="status-dot" Fill="{Binding StatusColor}"/>
                         <TextBlock Text="{Binding ConnectionStatus}"
-                                   FontSize="11" Foreground="#6b7084"/>
+                                   FontSize="11" Foreground="{DynamicResource TextMuted}"/>
                     </StackPanel>
-                    <Border Background="#1a1d27" CornerRadius="6" Padding="10,4"
-                            BorderBrush="#2a2d38" BorderThickness="1"
+                    <Border Background="{DynamicResource SettingsCardBg}" CornerRadius="6" Padding="10,4"
+                            BorderBrush="{DynamicResource InputBorder}" BorderThickness="1"
                             IsVisible="{Binding IsSimulationMode}">
                         <TextBlock Text="SIM" FontSize="10" FontWeight="Bold"
-                                   Foreground="#f0a050"/>
+                                   Foreground="{DynamicResource AccentOrange}"/>
                     </Border>
 
-                    <Border Width="1" Height="16" Background="#2a2d38" Margin="2,0"/>
+                    <Border Width="1" Height="16" Background="{DynamicResource InputBorder}" Margin="2,0"/>
                     <Button Classes="window-btn" Command="{Binding ToggleSettingsCommand}"
                             ToolTip.Tip="Settings">
-                        <TextBlock Text="&#x2699;" FontSize="14" Foreground="#6b7084"
+                        <TextBlock Text="&#x2699;" FontSize="14" Foreground="{DynamicResource TextMuted}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
-
-                    <Border Width="1" Height="16" Background="#2a2d38" Margin="2,0"/>
-
-                    <Button Classes="window-btn" Click="OnMinimizeClick"
-                            ToolTip.Tip="Minimize">
-                        <TextBlock Text="&#x2015;" FontSize="10" Foreground="#6b7084"
+                    <Border Width="1" Height="16" Background="{DynamicResource InputBorder}" Margin="2,0"/>
+                    <Button Classes="window-btn" Click="OnMinimizeClick" ToolTip.Tip="Minimize">
+                        <TextBlock Text="&#x2015;" FontSize="10" Foreground="{DynamicResource TextMuted}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
-
-                    <Button Classes="window-btn window-close" Click="OnCloseClick"
-                            ToolTip.Tip="Close">
-                        <TextBlock Text="&#x2715;" FontSize="11" Foreground="#6b7084"
+                    <Button Classes="window-btn window-close" Click="OnCloseClick" ToolTip.Tip="Close">
+                        <TextBlock Text="&#x2715;" FontSize="11" Foreground="{DynamicResource TextMuted}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border DockPanel.Dock="Top" Height="1" Background="#1a1d27"/>
+        <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Divider}"/>
 
-        <!-- Main Content: Sidebar + Chat + Right Panel -->
-        <Grid ColumnDefinitions="220,1,*,1,340">
+        <!-- Main Content -->
+        <Grid ColumnDefinitions="220,1,*,1,380">
 
-            <!-- ── Left Sidebar: Conversations ── -->
-            <DockPanel Grid.Column="0" Background="#0a0c10">
-
-                <!-- New conversation button -->
+            <!-- ── Left Sidebar ── -->
+            <DockPanel Grid.Column="0" Background="{DynamicResource SidebarBg}">
                 <Button DockPanel.Dock="Top" Margin="12,12,12,8"
                         Classes="primary" HorizontalAlignment="Stretch"
                         Command="{Binding NewConversationCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                HorizontalAlignment="Center">
-                        <TextBlock Text="+" FontSize="14" FontWeight="Bold"
-                                   VerticalAlignment="Center"/>
-                        <TextBlock Text="New Project" FontSize="12"
-                                   VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                        <TextBlock Text="+" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="New Project" FontSize="12" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <!-- Delete conversation button -->
                 <Button DockPanel.Dock="Top" Margin="12,0,12,8"
                         HorizontalAlignment="Stretch"
                         Command="{Binding DeleteConversationCommand}"
                         ToolTip.Tip="Delete selected project"
-                        Background="#1a1020" Foreground="#e05050"
-                        FontSize="11" Padding="8,6"
-                        CornerRadius="8" BorderThickness="1"
-                        BorderBrush="#2a1525">
-                    <StackPanel Orientation="Horizontal" Spacing="6"
-                                HorizontalAlignment="Center">
-                        <TextBlock Text="&#x2715;" FontSize="10"
-                                   VerticalAlignment="Center"/>
-                        <TextBlock Text="Delete Project" FontSize="11"
-                                   VerticalAlignment="Center"/>
+                        Background="{DynamicResource DeleteBtnBg}" Foreground="{DynamicResource AccentRed}"
+                        FontSize="11" Padding="8,6" CornerRadius="8"
+                        BorderThickness="1" BorderBrush="{DynamicResource DeleteBtnBorder}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                        <TextBlock Text="&#x2715;" FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Text="Delete Project" FontSize="11" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <!-- Section label -->
                 <TextBlock DockPanel.Dock="Top" Text="PROJECTS"
-                           FontSize="10" FontWeight="Bold" Foreground="#3d4052"
-                           Margin="16,4,0,8"
-                           LetterSpacing="1.5"/>
+                           FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}"
+                           Margin="16,4,0,8" LetterSpacing="1.5"/>
+
+                <!-- Service Status (bottom) -->
+                <Border DockPanel.Dock="Bottom" Background="{DynamicResource CardBg}"
+                        CornerRadius="8" Margin="8,4,8,8" Padding="10,8"
+                        BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="SERVICES" FontSize="9" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextMuted}" LetterSpacing="1.2"/>
+                        <DockPanel>
+                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6"
+                                     Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Fill="{DynamicResource AccentGreen}"
+                                     IsVisible="{Binding IsCoreAgentRunning}"/>
+                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6"
+                                     Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Fill="{DynamicResource AccentRed}"
+                                     IsVisible="{Binding !IsCoreAgentRunning}"/>
+                            <Button DockPanel.Dock="Right" Classes="window-btn" Padding="4,2"
+                                    Command="{Binding RestartCoreAgentCommand}" ToolTip.Tip="Restart">
+                                <TextBlock Text="&#x21BB;" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                            </Button>
+                            <TextBlock Text="Core Agent" FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <DockPanel>
+                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6"
+                                     Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Fill="{DynamicResource AccentGreen}"
+                                     IsVisible="{Binding IsOllamaRunning}"/>
+                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6"
+                                     Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Fill="{DynamicResource AccentRed}"
+                                     IsVisible="{Binding !IsOllamaRunning}"/>
+                            <Button DockPanel.Dock="Right" Classes="window-btn" Padding="4,2"
+                                    Command="{Binding RestartOllamaCommand}" ToolTip.Tip="Restart">
+                                <TextBlock Text="&#x21BB;" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                            </Button>
+                            <TextBlock Text="Ollama" FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- Conversation list -->
-                <ListBox Margin="8,0,8,12"
+                <ListBox Margin="8,0,8,4"
                          ItemsSource="{Binding Conversations}"
                          SelectedItem="{Binding SelectedConversation}"
-                         Background="Transparent"
-                         BorderThickness="0">
+                         Background="Transparent" BorderThickness="0">
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
                             <Setter Property="Padding" Value="10,8"/>
                             <Setter Property="Margin" Value="0,2"/>
                             <Setter Property="CornerRadius" Value="8"/>
-                            <Setter Property="Foreground" Value="#8b8fa3"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                             <Setter Property="FontSize" Value="12"/>
                         </Style>
                         <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#1a1d27"/>
+                            <Setter Property="Background" Value="{DynamicResource SelectedBg}"/>
                         </Style>
                         <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#12141a"/>
+                            <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
                         </Style>
                     </ListBox.Styles>
                     <ListBox.ItemTemplate>
@@ -153,17 +170,12 @@
                             <DockPanel>
                                 <Border DockPanel.Dock="Left" Width="6" Height="6"
                                         CornerRadius="3" Margin="0,0,10,0"
-                                        Background="{Binding StatusColor}"
-                                        VerticalAlignment="Center"/>
+                                        Background="{Binding StatusColor}" VerticalAlignment="Center"/>
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Title}"
-                                               FontSize="12" FontWeight="Medium"
-                                               Foreground="#c8cad3"
-                                               TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Subtitle}"
-                                               FontSize="10" Foreground="#3d4052"
-                                               Margin="0,2,0,0"
-                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Medium"
+                                               Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="{DynamicResource TextMuted}"
+                                               Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                             </DockPanel>
                         </DataTemplate>
@@ -171,51 +183,34 @@
                 </ListBox>
             </DockPanel>
 
-            <!-- Divider -->
-            <Border Grid.Column="1" Background="#1a1d27"/>
+            <Border Grid.Column="1" Background="{DynamicResource Divider}"/>
 
-            <!-- ── Center: Chat Panel + Settings Overlay ── -->
+            <!-- ── Center: Chat + Settings ── -->
             <Grid Grid.Column="2">
-
-                <!-- Chat Panel -->
-                <DockPanel Margin="16,12,8,16"
-                           IsVisible="{Binding !IsSettingsOpen}">
-
-                    <TextBlock DockPanel.Dock="Top" Classes="section-header"
-                               Text="CHAT"/>
-
-                    <!-- Input area -->
-                    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto"
-                          Margin="0,10,0,0">
-                        <TextBox Grid.Column="0"
-                                 Text="{Binding UserInput}"
+                <DockPanel Margin="16,12,8,16" IsVisible="{Binding !IsSettingsOpen}">
+                    <TextBlock DockPanel.Dock="Top" Classes="section-header" Text="CHAT"/>
+                    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                        <TextBox Grid.Column="0" Text="{Binding UserInput}"
                                  Watermark="Describe what you want the agent to do..."
                                  KeyDown="OnInputKeyDown"/>
-                        <Button Grid.Column="1" Classes="primary"
-                                Content="Send" Margin="8,0,0,0"
+                        <Button Grid.Column="1" Classes="primary" Content="Send" Margin="8,0,0,0"
                                 Command="{Binding SendMessageCommand}"/>
                     </Grid>
-
-                    <!-- Messages -->
                     <Border Classes="card" Padding="14">
-                        <ListBox Classes="chat"
-                                 ItemsSource="{Binding ChatMessages}"
+                        <ListBox Classes="chat" ItemsSource="{Binding ChatMessages}"
                                  AutoScrollToSelectedItem="True">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ChatMessage">
                                     <StackPanel Margin="0,4">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{Binding Role}"
-                                                       FontSize="11" FontWeight="Bold"
-                                                       Foreground="{Binding RoleColor}"/>
-                                            <TextBlock Text="{Binding Timestamp}"
-                                                       FontSize="10" Foreground="#3d4052"/>
+                                            <TextBlock Text="{Binding Role}" FontSize="11"
+                                                       FontWeight="Bold" Foreground="{Binding RoleColor}"/>
+                                            <TextBlock Text="{Binding Timestamp}" FontSize="10"
+                                                       Foreground="{DynamicResource TextMuted}"/>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Content}"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="#c8cad3" FontSize="13"
-                                                   Margin="0,3,0,0"
-                                                   LineHeight="20"/>
+                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextPrimary}" FontSize="13"
+                                                   Margin="0,3,0,0" LineHeight="20"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -223,100 +218,247 @@
                     </Border>
                 </DockPanel>
 
-                <!-- Settings Panel (overlay) -->
+                <!-- ════════ Settings overlay ════════ -->
                 <Border Margin="16,12,8,16" Classes="card" Padding="0"
                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettingsOpen}"
                         DataContext="{Binding Settings}">
                     <DockPanel>
-
-                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto"
-                              Margin="20,16,20,0">
-                            <TextBlock Text="SETTINGS" Classes="section-header"
-                                       FontSize="12" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="window-btn"
-                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSettingsCommand}"
-                                    ToolTip.Tip="Close settings">
-                                <TextBlock Text="&#x2715;" FontSize="11" Foreground="#6b7084"/>
-                            </Button>
+                        <!-- Header with theme toggle -->
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="20,16,20,0">
+                            <TextBlock Text="SETTINGS" Classes="section-header" FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <!-- Theme toggle: sun icon + toggle + moon icon -->
+                                <TextBlock Text="&#x2600;" FontSize="13" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentOrange}"/>
+                                <ToggleSwitch IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDarkMode}"
+                                              OnContent="" OffContent=""
+                                              MinWidth="40" Margin="0,0,0,0"
+                                              VerticalAlignment="Center"/>
+                                <TextBlock Text="&#x263D;" FontSize="13" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentBlue}"/>
+                                <Border Width="1" Height="16" Background="{DynamicResource Divider}" Margin="4,0"/>
+                                <Button Classes="window-btn"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSettingsCommand}"
+                                        ToolTip.Tip="Close settings">
+                                    <TextBlock Text="&#x2715;" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                </Button>
+                            </StackPanel>
                         </Grid>
 
-                        <Button DockPanel.Dock="Bottom" Classes="primary"
-                                Content="Save" Margin="20,10,20,16"
-                                HorizontalAlignment="Left"
+                        <!-- Save button -->
+                        <Button DockPanel.Dock="Bottom" Classes="primary" Content="Save"
+                                Margin="20,10,20,16" HorizontalAlignment="Left"
                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveSettingsCommand}"/>
 
                         <ScrollViewer Margin="0,8,0,0" Padding="20,0">
-                            <StackPanel Spacing="20">
+                            <StackPanel Spacing="16">
 
-                                <!-- Vision Model -->
-                                <Border Background="#0d0f14" CornerRadius="10"
-                                        Padding="16" BorderBrush="#1e2029"
-                                        BorderThickness="1">
+                                <!-- ══ Ollama Warning Banner ══ -->
+                                <Border Background="{DynamicResource WarningBg}" CornerRadius="8"
+                                        Padding="12" BorderBrush="{DynamicResource AccentOrange}"
+                                        BorderThickness="1"
+                                        IsVisible="{Binding !IsOllamaInstalled}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="&#x26A0;" FontSize="16" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource AccentOrange}"/>
+                                        <TextBlock Text="{Binding OllamaWarningMessage}" FontSize="12"
+                                                   Foreground="{DynamicResource WarningText}"
+                                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- ══════ VISION MODEL ══════ -->
+                                <Border Background="{DynamicResource SettingsCardBg}" CornerRadius="10"
+                                        Padding="16" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
                                     <StackPanel Spacing="12">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock Text="&#x1F441;" FontSize="14"/>
-                                            <TextBlock Text="VISION MODEL (LOCAL)"
-                                                       FontSize="11" FontWeight="Bold"
-                                                       Foreground="#6c8aff"
+                                            <TextBlock Text="VISION MODEL" FontSize="11" FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentBlue}"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Endpoint" FontSize="11"
-                                                       Foreground="#6b7084"/>
-                                            <TextBox Text="{Binding VisionEndpoint}"
-                                                     Watermark="http://localhost:11434"/>
+
+                                        <!-- Local / Cloud toggle -->
+                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                            <RadioButton Content="Local (Ollama)" GroupName="VisionSource"
+                                                         IsChecked="{Binding IsVisionLocal}"/>
+                                            <RadioButton Content="Cloud" GroupName="VisionSource"
+                                                         IsChecked="{Binding IsVisionCloud}"/>
                                         </StackPanel>
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Model" FontSize="11"
-                                                       Foreground="#6b7084"/>
-                                            <TextBox Text="{Binding VisionModel}"
-                                                     Watermark="moondream"/>
+
+                                        <!-- LOCAL fields -->
+                                        <StackPanel Spacing="8" IsVisible="{Binding IsVisionLocal}">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Endpoint" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBox Text="{Binding VisionEndpoint}"
+                                                         Watermark="http://localhost:11434"/>
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Model" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBox Text="{Binding VisionModel}" Watermark="moondream"/>
+                                            </StackPanel>
+                                            <!-- Pull terminal -->
+                                            <Border Background="{DynamicResource TerminalBg}"
+                                                    CornerRadius="8" Padding="10" Margin="0,4,0,0">
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock Text="PULL MODEL" FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource TextMuted}"/>
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBox Text="{Binding VisionPullModelName}"
+                                                                 Watermark="e.g. moondream" FontSize="12"
+                                                                 FontFamily="{StaticResource MonoFont}"/>
+                                                        <Button Grid.Column="1" Classes="primary" Content="Pull"
+                                                                Margin="6,0,0,0" Padding="12,8"
+                                                                Command="{Binding PullVisionModelCommand}"
+                                                                IsEnabled="{Binding !IsVisionPulling}"/>
+                                                    </Grid>
+                                                    <ListBox Classes="logs" MaxHeight="100"
+                                                             ItemsSource="{Binding VisionPullOutput}">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:TerminalLine">
+                                                                <TextBlock Text="{Binding Text}"
+                                                                           Foreground="{Binding Color}"
+                                                                           FontSize="10"
+                                                                           FontFamily="{StaticResource MonoFont}"
+                                                                           TextWrapping="Wrap"/>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <!-- CLOUD fields -->
+                                        <StackPanel Spacing="8" IsVisible="{Binding IsVisionCloud}">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Provider" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <ComboBox ItemsSource="{Binding VisionCloudProviders}"
+                                                          SelectedItem="{Binding VisionCloudProvider}"
+                                                          HorizontalAlignment="Stretch"/>
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="API Key" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBox Text="{Binding VisionCloudApiKey}"
+                                                             Watermark="sk-..."
+                                                             RevealPassword="{Binding IsVisionApiKeyVisible}"
+                                                             PasswordChar="*"/>
+                                                    <Button Grid.Column="1" Classes="window-btn" Margin="4,0,0,0"
+                                                            Command="{Binding ToggleVisionApiKeyVisibilityCommand}"
+                                                            ToolTip.Tip="Toggle visibility">
+                                                        <TextBlock Text="&#x1F441;" FontSize="12"
+                                                                   Foreground="{DynamicResource TextMuted}"/>
+                                                    </Button>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Model" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBox Text="{Binding VisionCloudModel}" Watermark="gpt-4o"/>
+                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Reasoning Model -->
-                                <Border Background="#0d0f14" CornerRadius="10"
-                                        Padding="16" BorderBrush="#1e2029"
-                                        BorderThickness="1">
+                                <!-- ══════ REASONING MODEL ══════ -->
+                                <Border Background="{DynamicResource SettingsCardBg}" CornerRadius="10"
+                                        Padding="16" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
                                     <StackPanel Spacing="12">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock Text="&#x1F9E0;" FontSize="14"/>
-                                            <TextBlock Text="REASONING MODEL (CLOUD)"
-                                                       FontSize="11" FontWeight="Bold"
-                                                       Foreground="#50c878"
+                                            <TextBlock Text="REASONING MODEL" FontSize="11" FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentGreen}"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Provider" FontSize="11"
-                                                       Foreground="#6b7084"/>
-                                            <ComboBox ItemsSource="{Binding Providers}"
-                                                      SelectedItem="{Binding SelectedProvider}"
-                                                      HorizontalAlignment="Stretch"/>
+
+                                        <!-- Local / Cloud toggle -->
+                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                            <RadioButton Content="Local (Ollama)" GroupName="ReasoningSource"
+                                                         IsChecked="{Binding IsReasoningLocal}"/>
+                                            <RadioButton Content="Cloud" GroupName="ReasoningSource"
+                                                         IsChecked="{Binding IsReasoningCloud}"/>
                                         </StackPanel>
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="API Key" FontSize="11"
-                                                       Foreground="#6b7084"/>
-                                            <Grid ColumnDefinitions="*,Auto">
-                                                <TextBox Grid.Column="0"
-                                                         Text="{Binding ApiKey}"
-                                                         Watermark="sk-..."
-                                                         RevealPassword="{Binding !IsApiKeyVisible}"
-                                                         PasswordChar="*"/>
-                                                <Button Grid.Column="1" Classes="window-btn"
-                                                        Margin="4,0,0,0"
-                                                        Command="{Binding ToggleApiKeyVisibilityCommand}"
-                                                        ToolTip.Tip="Toggle visibility">
-                                                    <TextBlock Text="&#x1F441;" FontSize="12"
-                                                               Foreground="#6b7084"/>
-                                                </Button>
-                                            </Grid>
+
+                                        <!-- LOCAL fields -->
+                                        <StackPanel Spacing="8" IsVisible="{Binding IsReasoningLocal}">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Endpoint" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBox Text="{Binding ReasoningEndpoint}"
+                                                         Watermark="http://localhost:11434"/>
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Model" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBox Text="{Binding ReasoningLocalModel}"
+                                                         Watermark="llama3"/>
+                                            </StackPanel>
+                                            <!-- Pull terminal -->
+                                            <Border Background="{DynamicResource TerminalBg}"
+                                                    CornerRadius="8" Padding="10" Margin="0,4,0,0">
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock Text="PULL MODEL" FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource TextMuted}"/>
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBox Text="{Binding ReasoningPullModelName}"
+                                                                 Watermark="e.g. llama3" FontSize="12"
+                                                                 FontFamily="{StaticResource MonoFont}"/>
+                                                        <Button Grid.Column="1" Classes="primary" Content="Pull"
+                                                                Margin="6,0,0,0" Padding="12,8"
+                                                                Command="{Binding PullReasoningModelCommand}"
+                                                                IsEnabled="{Binding !IsReasoningPulling}"/>
+                                                    </Grid>
+                                                    <ListBox Classes="logs" MaxHeight="100"
+                                                             ItemsSource="{Binding ReasoningPullOutput}">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:TerminalLine">
+                                                                <TextBlock Text="{Binding Text}"
+                                                                           Foreground="{Binding Color}"
+                                                                           FontSize="10"
+                                                                           FontFamily="{StaticResource MonoFont}"
+                                                                           TextWrapping="Wrap"/>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </StackPanel>
+                                            </Border>
                                         </StackPanel>
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Model" FontSize="11"
-                                                       Foreground="#6b7084"/>
-                                            <TextBox Text="{Binding ReasoningModel}"
-                                                     Watermark="claude-sonnet-4-20250514"/>
+
+                                        <!-- CLOUD fields -->
+                                        <StackPanel Spacing="8" IsVisible="{Binding IsReasoningCloud}">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Provider" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <ComboBox ItemsSource="{Binding Providers}"
+                                                          SelectedItem="{Binding SelectedProvider}"
+                                                          HorizontalAlignment="Stretch"/>
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="API Key" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBox Text="{Binding ApiKey}" Watermark="sk-..."
+                                                             RevealPassword="{Binding IsApiKeyVisible}"
+                                                             PasswordChar="*"/>
+                                                    <Button Grid.Column="1" Classes="window-btn" Margin="4,0,0,0"
+                                                            Command="{Binding ToggleApiKeyVisibilityCommand}"
+                                                            ToolTip.Tip="Toggle visibility">
+                                                        <TextBlock Text="&#x1F441;" FontSize="12"
+                                                                   Foreground="{DynamicResource TextMuted}"/>
+                                                    </Button>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Model" FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                                <TextBox Text="{Binding ReasoningModel}"
+                                                         Watermark="claude-sonnet-4-20250514"/>
+                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
@@ -327,69 +469,155 @@
                 </Border>
             </Grid>
 
-            <!-- Divider -->
-            <Border Grid.Column="3" Background="#1a1d27"/>
+            <Border Grid.Column="3" Background="{DynamicResource Divider}"/>
 
-            <!-- ── Right: Screenshot + Logs ── -->
+            <!-- ── Right: Tabbed Panel ── -->
             <DockPanel Grid.Column="4" Margin="8,12,16,16">
 
-                <!-- Screenshot card -->
-                <Border DockPanel.Dock="Top" Classes="card" Height="260"
-                        Margin="0,0,0,10">
+                <!-- Tab buttons -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="2" Margin="0,0,0,8">
+                    <Button Padding="8,5" CornerRadius="6" Tag="0" Click="OnTabClick"
+                            Background="{DynamicResource SelectedBg}" BorderThickness="0">
+                        <TextBlock Text="Screenshot" FontSize="10" Foreground="{DynamicResource TextSecondary}"/>
+                    </Button>
+                    <Button Padding="8,5" CornerRadius="6" Tag="1" Click="OnTabClick"
+                            Background="Transparent" BorderThickness="0">
+                        <TextBlock Text="Core Agent" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                    <Button Padding="8,5" CornerRadius="6" Tag="2" Click="OnTabClick"
+                            Background="Transparent" BorderThickness="0">
+                        <TextBlock Text="Ollama" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                    <Button Padding="8,5" CornerRadius="6" Tag="3" Click="OnTabClick"
+                            Background="Transparent" BorderThickness="0">
+                        <TextBlock Text="Logs" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Tab 0: Screenshot + mini logs -->
+                <DockPanel x:Name="ScreenshotPanel">
+                    <Border DockPanel.Dock="Top" Classes="card" Height="240" Margin="0,0,0,8">
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,10,14,6">
+                                <TextBlock Classes="section-header" Text="SCREENSHOT"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding ScreenshotInfo}" FontSize="10"
+                                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                    <Button Classes="window-btn" Command="{Binding CaptureScreenshotCommand}"
+                                            ToolTip.Tip="Capture">
+                                        <TextBlock Text="&#x1F4F7;" FontSize="11"/>
+                                    </Button>
+                                    <Button Classes="window-btn" Command="{Binding AnalyzeScreenCommand}"
+                                            ToolTip.Tip="VLM Analyze">
+                                        <TextBlock Text="&#x1F9E0;" FontSize="11"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <Border Background="{DynamicResource TerminalBg}" Margin="10,0,10,10"
+                                    CornerRadius="8" ClipToBounds="True">
+                                <Panel>
+                                    <Image Source="{Binding ScreenshotImage}" Stretch="Uniform"
+                                           IsVisible="{Binding ScreenshotImage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    <TextBlock Text="No capture" HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"
+                                               FontSize="12" FontStyle="Italic"
+                                               IsVisible="{Binding ScreenshotImage, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                </Panel>
+                            </Border>
+                        </DockPanel>
+                    </Border>
+                    <Border Classes="card" Padding="0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Classes="section-header" Text="LOGS"
+                                       Margin="14,10,14,6"/>
+                            <ListBox Classes="logs" Margin="14,0,14,8" ItemsSource="{Binding LogEntries}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:LogEntry">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding Level}" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{Binding LevelColor}" Width="32"/>
+                                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                                       FontFamily="{StaticResource MonoFont}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+                </DockPanel>
+
+                <!-- Tab 1: Core Agent terminal -->
+                <Border Classes="card" Padding="0" x:Name="CoreAgentPanel" IsVisible="False">
                     <DockPanel>
-                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto"
-                              Margin="14,12,14,8">
-                            <TextBlock Classes="section-header" Text="SCREENSHOT"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{Binding ScreenshotInfo}"
-                                           FontSize="10" Foreground="#3d4052"
-                                           VerticalAlignment="Center"/>
-                                <Button Classes="window-btn"
-                                        Command="{Binding CaptureScreenshotCommand}"
-                                        ToolTip.Tip="Capture screenshot">
-                                    <TextBlock Text="&#x1F4F7;" FontSize="11"/>
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,10,14,6">
+                            <TextBlock Classes="section-header" Text="CORE AGENT TERMINAL"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                <Button Classes="window-btn" Padding="4,2"
+                                        Command="{Binding StopCoreAgentCommand}" ToolTip.Tip="Stop">
+                                    <TextBlock Text="&#x25A0;" FontSize="10" Foreground="{DynamicResource AccentRed}"/>
                                 </Button>
-                                <Button Classes="window-btn"
-                                        Command="{Binding AnalyzeScreenCommand}"
-                                        ToolTip.Tip="Analyze screen with VLM">
-                                    <TextBlock Text="&#x1F9E0;" FontSize="11"/>
+                                <Button Classes="window-btn" Padding="4,2"
+                                        Command="{Binding RestartCoreAgentCommand}" ToolTip.Tip="Restart">
+                                    <TextBlock Text="&#x21BB;" FontSize="10" Foreground="{DynamicResource AccentGreen}"/>
                                 </Button>
                             </StackPanel>
                         </Grid>
-                        <Border Background="#0a0c10" Margin="10,0,10,10"
-                                CornerRadius="8" ClipToBounds="True">
-                            <Panel>
-                                <Image Source="{Binding ScreenshotImage}"
-                                       Stretch="Uniform"
-                                       IsVisible="{Binding ScreenshotImage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                <TextBlock Text="No capture"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="#2a2d38" FontSize="12"
-                                           FontStyle="Italic"
-                                           IsVisible="{Binding ScreenshotImage, Converter={x:Static ObjectConverters.IsNull}}"/>
-                            </Panel>
-                        </Border>
+                        <ListBox Margin="10,0,10,8" Background="{DynamicResource TerminalBg}" BorderThickness="0"
+                                 ItemsSource="{Binding CoreAgentOutput}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TerminalLine">
+                                    <TextBlock Text="{Binding Text}" Foreground="{Binding Color}"
+                                               FontSize="10" TextWrapping="Wrap"
+                                               FontFamily="{StaticResource MonoFont}" Margin="0,0"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </DockPanel>
                 </Border>
 
-                <!-- Logs card -->
-                <Border Classes="card" Padding="0">
+                <!-- Tab 2: Ollama terminal -->
+                <Border Classes="card" Padding="0" x:Name="OllamaPanel" IsVisible="False">
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Classes="section-header"
-                                   Text="LOGS" Margin="14,12,14,8"/>
-                        <ListBox Classes="logs" Margin="14,0,14,10"
-                                 ItemsSource="{Binding LogEntries}">
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,10,14,6">
+                            <TextBlock Classes="section-header" Text="OLLAMA TERMINAL"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                <Button Classes="window-btn" Padding="4,2"
+                                        Command="{Binding StopOllamaCommand}" ToolTip.Tip="Stop">
+                                    <TextBlock Text="&#x25A0;" FontSize="10" Foreground="{DynamicResource AccentRed}"/>
+                                </Button>
+                                <Button Classes="window-btn" Padding="4,2"
+                                        Command="{Binding RestartOllamaCommand}" ToolTip.Tip="Restart">
+                                    <TextBlock Text="&#x21BB;" FontSize="10" Foreground="{DynamicResource AccentGreen}"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                        <ListBox Margin="10,0,10,8" Background="{DynamicResource TerminalBg}" BorderThickness="0"
+                                 ItemsSource="{Binding OllamaOutput}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TerminalLine">
+                                    <TextBlock Text="{Binding Text}" Foreground="{Binding Color}"
+                                               FontSize="10" TextWrapping="Wrap"
+                                               FontFamily="{StaticResource MonoFont}" Margin="0,0"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- Tab 3: Full logs -->
+                <Border Classes="card" Padding="0" x:Name="LogsPanel" IsVisible="False">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Classes="section-header" Text="ALL LOGS"
+                                   Margin="14,10,14,6"/>
+                        <ListBox Classes="logs" Margin="14,0,14,8" ItemsSource="{Binding LogEntries}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:LogEntry">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Level}"
-                                                   FontSize="10" FontWeight="Bold"
-                                                   Foreground="{Binding LevelColor}"
-                                                   Width="32"/>
-                                        <TextBlock Text="{Binding Message}"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="#6b7084" FontSize="11"
+                                        <TextBlock Text="{Binding Level}" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{Binding LevelColor}" Width="32"/>
+                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11"
                                                    FontFamily="{StaticResource MonoFont}"/>
                                     </StackPanel>
                                 </DataTemplate>

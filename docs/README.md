@@ -38,10 +38,18 @@ Handles all intelligence and system interaction:
 Provides the user interface:
 
 - Chat panel for natural language interaction
-- Live screenshot viewer
+- Live screenshot viewer with auto-downscaled captures
+- Embedded terminal panels for Core Agent and Ollama output
+- Service status monitoring (green/red indicators)
 - Task history and execution log
-- Start / stop / pause controls
-- System configuration panel
+- Start / stop / restart controls for all services
+- Light/dark theme with brand colors (blue `#6C8AFF`, orange `#F0A050`)
+- Settings panel with:
+  - Theme toggle (light/dark mode)
+  - Vision model: Local (Ollama) or Cloud (OpenAI/Gemini/Custom)
+  - Reasoning model: Local (Ollama) or Cloud (Claude/OpenAI/Gemini/Custom)
+  - Ollama model pull terminal with live progress
+  - Ollama installation detection with warning banner
 
 The GUI **never** executes system actions directly. Every action flows through the Core Agent.
 
@@ -98,17 +106,30 @@ dotnet build
 
 ## Running
 
-**Phase 0–5 operate in simulation mode only.** No real system actions are executed until Phase 9.
+**Phases 0–8.5 operate in simulation mode only.** No real system actions are executed until Phase 9.
+
+### Prerequisites
+
+- **Rust toolchain** (stable) for Core Agent
+- **.NET 8 SDK** for Desktop GUI
+- **Ollama** for local VLM (vision model: moondream)
+- **Claude API key** (optional) for LLM-powered planning
+
+### Quick start
 
 ```bash
-# Start the core agent
-cd core-agent && cargo run
+# Build core agent
+cd core-agent && cargo build --release
 
-# In a separate terminal, start the GUI
+# Start the GUI (auto-launches Core Agent and Ollama)
 cd desktop-gui && dotnet run
 ```
 
-The GUI connects to the Core Agent over local IPC automatically.
+The GUI manages all background processes automatically:
+- Starts Ollama server (or detects if already running)
+- Starts Core Agent
+- Connects via JSON-RPC on port 9100
+- All process output visible in embedded terminal tabs
 
 ## Documentation
 

@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
+config = { path = "../config" }
 actions = { path = "../actions" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
