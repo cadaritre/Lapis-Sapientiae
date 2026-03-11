@@ -212,10 +212,19 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveSettings()
+    private async Task SaveSettings()
     {
         IsSettingsOpen = false;
         LogEntries.Add(LogEntry.Info("Settings saved"));
+
+        if (_agent.IsConnected)
+        {
+            var ok = await _agent.ConfigureAsync(Settings.VisionEndpoint, Settings.VisionModel);
+            if (ok)
+                LogEntries.Add(LogEntry.Info($"VLM configured: {Settings.VisionModel} @ {Settings.VisionEndpoint}"));
+            else
+                LogEntries.Add(LogEntry.Warn("Failed to send VLM config to Core Agent"));
+        }
     }
 
     [RelayCommand]
@@ -258,6 +267,56 @@ public partial class MainWindowViewModel : ViewModelBase
         Conversations.Add(conv);
         SelectedConversation = conv;
         LogEntries.Add(LogEntry.Info($"Created project: {conv.Title}"));
+    }
+
+    [RelayCommand]
+    private void DeleteConversation()
+    {
+        if (SelectedConversation is null || Conversations.Count <= 1)
+            return;
+
+        var toRemove = SelectedConversation;
+        var idx = Conversations.IndexOf(toRemove);
+        Conversations.Remove(toRemove);
+        SelectedConversation = Conversations[Math.Max(0, idx - 1)];
+        LogEntries.Add(LogEntry.Info($"Deleted project: {toRemove.Title}"));
+    }
+
+    [RelayCommand]
+    private async Task AnalyzeScreen()
+    {
+        if (!_agent.IsConnected) return;
+
+        ChatMessages.Add(ChatMessage.System("Analyzing screen with VLM..."));
+        LogEntries.Add(LogEntry.Info("Requesting VLM screen analysis..."));
+
+        try
+        {
+            // Send config first
+            await _agent.ConfigureAsync(Settings.VisionEndpoint, Settings.VisionModel);
+
+            var result = await _agent.AnalyzeScreenAsync();
+            if (result is not null)
+            {
+                var (width, height, description, model) = result.Value;
+                ScreenshotInfo = $"{width}x{height} | {model}";
+                ChatMessages.Add(ChatMessage.Agent($"[VLM: {model}]\n{description}"));
+                LogEntries.Add(LogEntry.Info($"VLM analysis complete ({model})"));
+
+                // Also capture the screenshot for display
+                await CaptureScreenshot();
+            }
+            else
+            {
+                ChatMessages.Add(ChatMessage.Agent("VLM analysis returned no result."));
+                LogEntries.Add(LogEntry.Warn("VLM analysis returned null"));
+            }
+        }
+        catch (Exception ex)
+        {
+            ChatMessages.Add(ChatMessage.Agent($"VLM error: {ex.Message}"));
+            LogEntries.Add(LogEntry.Error($"VLM error: {ex.Message}"));
+        }
     }
 
     public IBrush StatusColor => ConnectionStatus == "Connected"

@@ -1,8 +1,9 @@
-/// Perception module — captures the visual state of the desktop.
+/// Perception module — captures the visual state of the desktop and analyzes it via VLM.
 ///
-/// Phase 6: real screenshot capture using xcap, encoded as base64 PNG.
+/// Phase 6: real screenshot capture using xcap + VLM analysis via Ollama API.
 use common::{LapisError, LapisResult};
 use base64::Engine;
+use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 
 /// A captured screenshot with metadata and base64-encoded PNG data.
@@ -10,6 +11,29 @@ pub struct Screenshot {
     pub width: u32,
     pub height: u32,
     pub png_base64: String,
+}
+
+/// Response from VLM analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VlmResponse {
+    pub description: String,
+    pub model: String,
+}
+
+/// Configuration for the VLM endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VlmConfig {
+    pub endpoint: String,
+    pub model: String,
+}
+
+impl Default for VlmConfig {
+    fn default() -> Self {
+        Self {
+            endpoint: "http://localhost:11434".into(),
+            model: "moondream".into(),
+        }
+    }
 }
 
 /// Captures the primary monitor's screen as a PNG, returns base64-encoded data.
@@ -47,13 +71,83 @@ pub fn capture_screen() -> LapisResult<Screenshot> {
     })
 }
 
+/// Ollama /api/generate request body for vision models.
+#[derive(Serialize)]
+struct OllamaGenerateRequest {
+    model: String,
+    prompt: String,
+    images: Vec<String>,
+    stream: bool,
+}
+
+/// Ollama /api/generate response body.
+#[derive(Deserialize)]
+struct OllamaGenerateResponse {
+    response: String,
+}
+
+/// Analyze a base64-encoded PNG image using a local VLM (Ollama API).
+pub async fn analyze_image(
+    vlm_config: &VlmConfig,
+    png_base64: &str,
+    prompt: &str,
+) -> LapisResult<VlmResponse> {
+    let url = format!("{}/api/generate", vlm_config.endpoint.trim_end_matches('/'));
+
+    let body = OllamaGenerateRequest {
+        model: vlm_config.model.clone(),
+        prompt: prompt.to_string(),
+        images: vec![png_base64.to_string()],
+        stream: false,
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| LapisError::Perception(format!("HTTP client error: {e}")))?;
+
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| LapisError::Perception(format!("VLM request failed: {e}")))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(LapisError::Perception(format!(
+            "VLM returned {status}: {text}"
+        )));
+    }
+
+    let ollama_resp: OllamaGenerateResponse = resp
+        .json()
+        .await
+        .map_err(|e| LapisError::Perception(format!("VLM response parse error: {e}")))?;
+
+    Ok(VlmResponse {
+        description: ollama_resp.response,
+        model: vlm_config.model.clone(),
+    })
+}
+
+/// Capture screen and analyze it with VLM in one call.
+pub async fn capture_and_analyze(
+    vlm_config: &VlmConfig,
+    prompt: &str,
+) -> LapisResult<(Screenshot, VlmResponse)> {
+    let screenshot = capture_screen()?;
+    let analysis = analyze_image(vlm_config, &screenshot.png_base64, prompt).await?;
+    Ok((screenshot, analysis))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn capture_screen_returns_data() {
-        // This test requires a display — may fail in headless CI
         match capture_screen() {
             Ok(s) => {
                 assert!(s.width > 0);
@@ -64,5 +158,12 @@ mod tests {
                 // Acceptable in headless environments
             }
         }
+    }
+
+    #[test]
+    fn default_vlm_config() {
+        let cfg = VlmConfig::default();
+        assert_eq!(cfg.endpoint, "http://localhost:11434");
+        assert_eq!(cfg.model, "moondream");
     }
 }

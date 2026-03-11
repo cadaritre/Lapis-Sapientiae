@@ -68,6 +68,42 @@ public class AgentService : IDisposable
         return (width, height, data);
     }
 
+    /// <summary>Send VLM/agent configuration to the Core Agent.</summary>
+    public async Task<bool> ConfigureAsync(string vlmEndpoint, string vlmModel)
+    {
+        try
+        {
+            var parameters = new JsonObject
+            {
+                ["vlm_endpoint"] = vlmEndpoint,
+                ["vlm_model"] = vlmModel
+            };
+            await _client.SendRequestAsync("agent.configure", parameters);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Capture and analyze the screen using the configured VLM.</summary>
+    public async Task<(int width, int height, string description, string model)?> AnalyzeScreenAsync(string? prompt = null)
+    {
+        var parameters = new JsonObject();
+        if (prompt is not null)
+            parameters["prompt"] = prompt;
+
+        var result = await _client.SendRequestAsync("agent.analyze_screen", parameters);
+        if (result is null) return null;
+
+        var width = result["width"]?.GetValue<int>() ?? 0;
+        var height = result["height"]?.GetValue<int>() ?? 0;
+        var description = result["description"]?.GetValue<string>() ?? "";
+        var model = result["model"]?.GetValue<string>() ?? "";
+        return (width, height, description, model);
+    }
+
     public async Task DisconnectAsync()
     {
         await _client.DisconnectAsync();

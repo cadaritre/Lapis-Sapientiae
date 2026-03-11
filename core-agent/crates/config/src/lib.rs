@@ -14,6 +14,10 @@ pub struct AppConfig {
     pub ipc_port: u16,
     /// Logging level: "debug", "info", "warn", "error".
     pub log_level: String,
+    /// VLM endpoint URL (e.g. Ollama).
+    pub vlm_endpoint: String,
+    /// VLM model name (e.g. "llava:latest").
+    pub vlm_model: String,
 }
 
 impl Default for AppConfig {
@@ -23,13 +27,14 @@ impl Default for AppConfig {
             ipc_transport: "tcp".into(),
             ipc_port: 9100,
             log_level: "info".into(),
+            vlm_endpoint: "http://localhost:11434".into(),
+            vlm_model: "moondream".into(),
         }
     }
 }
 
 /// Loads configuration. Phase 1: returns defaults only.
 pub fn load() -> LapisResult<AppConfig> {
-    // Phase 1: stub — TOML loading comes in later phases
     Ok(AppConfig::default())
 }
 
@@ -47,5 +52,6 @@ mod tests {
     fn load_returns_defaults() {
         let cfg = load().unwrap();
         assert_eq!(cfg.ipc_port, 9100);
+        assert_eq!(cfg.vlm_model, "moondream");
     }
 }

@@ -1,9 +1,10 @@
 /// IPC server module for JSON-RPC 2.0 communication with the GUI.
 ///
 /// Listens on a TCP port and handles newline-delimited JSON-RPC messages.
-/// Phase 4: supports pushing step notifications during instruction execution.
+/// Phase 6: supports VLM configuration and screen analysis.
 use common::{LapisError, LapisResult};
 use config::AppConfig;
+use perception::VlmConfig;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -67,13 +68,16 @@ impl JsonRpcResponse {
 
 pub struct IpcServer {
     port: u16,
-    config: AppConfig,
+    config: Arc<Mutex<AppConfig>>,
 }
 
 impl IpcServer {
     pub fn new(config: AppConfig) -> LapisResult<Self> {
         let port = config.ipc_port;
-        Ok(Self { port, config })
+        Ok(Self {
+            port,
+            config: Arc::new(Mutex::new(config)),
+        })
     }
 
     /// Start listening and handle connections.
@@ -92,7 +96,7 @@ impl IpcServer {
                 .map_err(|e| LapisError::Ipc(format!("accept error: {e}")))?;
 
             println!("[ipc] Client connected: {peer}");
-            let config = self.config.clone();
+            let config = Arc::clone(&self.config);
 
             tokio::spawn(async move {
                 if let Err(e) = handle_connection(stream, &config).await {
@@ -107,7 +111,7 @@ impl IpcServer {
 /// Handle a single client connection: read lines, parse JSON-RPC, dispatch.
 async fn handle_connection(
     stream: tokio::net::TcpStream,
-    config: &AppConfig,
+    config: &Arc<Mutex<AppConfig>>,
 ) -> LapisResult<()> {
     let (reader, writer) = stream.into_split();
     let writer = Arc::new(Mutex::new(writer));
@@ -152,18 +156,15 @@ async fn send_message<T: Serialize>(
     let mut out = serde_json::to_string(msg).unwrap_or_default();
     out.push('\n');
     let mut w = writer.lock().unwrap_or_else(|e| e.into_inner());
-    // Use a blocking write since we hold the mutex briefly
     let bytes = out.as_bytes();
     let _ = std::io::Write::write_all(&mut WriterAdapter(&mut *w), bytes);
 }
 
 /// Adapter to use tokio OwnedWriteHalf with std::io::Write.
-/// We buffer into a Vec and then write synchronously since we're in a mutex.
 struct WriterAdapter<'a>(&'a mut tokio::net::tcp::OwnedWriteHalf);
 
 impl<'a> std::io::Write for WriterAdapter<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        // Use try_write for non-blocking TCP write
         match self.0.try_write(buf) {
             Ok(n) => Ok(n),
             Err(e) => Err(e),
@@ -178,23 +179,98 @@ impl<'a> std::io::Write for WriterAdapter<'a> {
 /// Route a JSON-RPC request to the appropriate handler.
 async fn dispatch_request(
     req: &JsonRpcRequest,
-    config: &AppConfig,
+    config: &Arc<Mutex<AppConfig>>,
     writer: &Arc<Mutex<tokio::net::tcp::OwnedWriteHalf>>,
 ) -> JsonRpcResponse {
     let id = req.id.clone().unwrap_or(serde_json::Value::Null);
 
     match req.method.as_str() {
-        "agent.instruct" => handle_instruct(id, &req.params, config, writer).await,
+        "agent.instruct" => {
+            let cfg = config.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            handle_instruct(id, &req.params, &cfg, writer).await
+        }
         "agent.ping" => JsonRpcResponse::success(id, serde_json::json!({"pong": true})),
-        "agent.status" => JsonRpcResponse::success(
+        "agent.status" => {
+            let cfg = config.lock().unwrap_or_else(|e| e.into_inner());
+            JsonRpcResponse::success(
+                id,
+                serde_json::json!({
+                    "simulation_mode": cfg.simulation_mode,
+                    "version": "0.1.0",
+                    "vlm_endpoint": cfg.vlm_endpoint,
+                    "vlm_model": cfg.vlm_model,
+                }),
+            )
+        }
+        "agent.screenshot" => handle_screenshot(id),
+        "agent.configure" => handle_configure(id, &req.params, config),
+        "agent.analyze_screen" => handle_analyze_screen(id, &req.params, config).await,
+        _ => JsonRpcResponse::error(id, -32601, format!("Method not found: {}", req.method)),
+    }
+}
+
+/// Handle the `agent.configure` method — update runtime config from GUI settings.
+fn handle_configure(
+    id: serde_json::Value,
+    params: &Option<serde_json::Value>,
+    config: &Arc<Mutex<AppConfig>>,
+) -> JsonRpcResponse {
+    let params = match params {
+        Some(p) => p,
+        None => return JsonRpcResponse::error(id, -32602, "Missing parameters".into()),
+    };
+
+    let mut cfg = config.lock().unwrap_or_else(|e| e.into_inner());
+
+    if let Some(endpoint) = params.get("vlm_endpoint").and_then(|v| v.as_str()) {
+        cfg.vlm_endpoint = endpoint.to_string();
+        println!("[ipc] VLM endpoint updated: {endpoint}");
+    }
+    if let Some(model) = params.get("vlm_model").and_then(|v| v.as_str()) {
+        cfg.vlm_model = model.to_string();
+        println!("[ipc] VLM model updated: {model}");
+    }
+    if let Some(sim) = params.get("simulation_mode").and_then(|v| v.as_bool()) {
+        cfg.simulation_mode = sim;
+        println!("[ipc] Simulation mode: {sim}");
+    }
+
+    JsonRpcResponse::success(id, serde_json::json!({"configured": true}))
+}
+
+/// Handle the `agent.analyze_screen` method — capture screenshot + send to VLM.
+async fn handle_analyze_screen(
+    id: serde_json::Value,
+    params: &Option<serde_json::Value>,
+    config: &Arc<Mutex<AppConfig>>,
+) -> JsonRpcResponse {
+    let prompt = params
+        .as_ref()
+        .and_then(|p| p.get("prompt"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Describe what you see on the screen in detail. Include any visible windows, text, buttons, and UI elements.");
+
+    let vlm_cfg = {
+        let cfg = config.lock().unwrap_or_else(|e| e.into_inner());
+        VlmConfig {
+            endpoint: cfg.vlm_endpoint.clone(),
+            model: cfg.vlm_model.clone(),
+        }
+    };
+
+    println!("[ipc] Analyzing screen with VLM: {} ({})", vlm_cfg.model, vlm_cfg.endpoint);
+
+    match perception::capture_and_analyze(&vlm_cfg, prompt).await {
+        Ok((screenshot, analysis)) => JsonRpcResponse::success(
             id,
             serde_json::json!({
-                "simulation_mode": config.simulation_mode,
-                "version": "0.1.0"
+                "width": screenshot.width,
+                "height": screenshot.height,
+                "description": analysis.description,
+                "model": analysis.model,
             }),
         ),
-        "agent.screenshot" => handle_screenshot(id),
-        _ => JsonRpcResponse::error(id, -32601, format!("Method not found: {}", req.method)),
+        Err(e) => JsonRpcResponse::error(id, -32000, format!("Analysis error: {e}")),
     }
 }
 
@@ -215,11 +291,9 @@ async fn handle_instruct(
         return JsonRpcResponse::error(id, -32602, "Missing 'text' parameter".into());
     }
 
-    // Collect notifications to send after each step
     let writer_clone = Arc::clone(writer);
 
     match orchestrator::handle_instruction(text, config, move |step_notif| {
-        // Send notification immediately
         let notification = JsonRpcNotification {
             jsonrpc: "2.0".into(),
             method: "agent.step_progress".into(),

@@ -12,7 +12,7 @@ public partial class SettingsViewModel : ViewModelBase
     private string _visionEndpoint = "http://localhost:11434";
 
     [ObservableProperty]
-    private string _visionModel = "llava:latest";
+    private string _visionModel = "moondream";
 
     // ── Reasoning Model (Cloud) ──
 
