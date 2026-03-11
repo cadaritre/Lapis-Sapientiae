@@ -147,7 +147,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 6 — Basic perception (screenshots)
+## Phase 6 — Basic perception (screenshots) ✓
+
+**Status: COMPLETE**
 
 **Objective:** Capture screenshots and send them to the GUI for display.
 

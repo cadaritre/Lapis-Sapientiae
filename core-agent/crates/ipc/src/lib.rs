@@ -193,6 +193,7 @@ async fn dispatch_request(
                 "version": "0.1.0"
             }),
         ),
+        "agent.screenshot" => handle_screenshot(id),
         _ => JsonRpcResponse::error(id, -32601, format!("Method not found: {}", req.method)),
     }
 }
@@ -234,6 +235,21 @@ async fn handle_instruct(
     }) {
         Ok(summary) => JsonRpcResponse::success(id, serde_json::json!({"summary": summary})),
         Err(e) => JsonRpcResponse::error(id, -32000, format!("Agent error: {e}")),
+    }
+}
+
+/// Handle the `agent.screenshot` method — capture and return base64 PNG.
+fn handle_screenshot(id: serde_json::Value) -> JsonRpcResponse {
+    match perception::capture_screen() {
+        Ok(screenshot) => JsonRpcResponse::success(
+            id,
+            serde_json::json!({
+                "width": screenshot.width,
+                "height": screenshot.height,
+                "png_base64": screenshot.png_base64,
+            }),
+        ),
+        Err(e) => JsonRpcResponse::error(id, -32000, format!("Screenshot error: {e}")),
     }
 }
 

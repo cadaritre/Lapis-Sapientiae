@@ -1,7 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -117,6 +119,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ConversationItem? _selectedConversation;
 
+    [ObservableProperty]
+    private Bitmap? _screenshotImage;
+
+    [ObservableProperty]
+    private string _screenshotInfo = "No capture";
+
     public SettingsViewModel Settings { get; } = new();
 
     public ObservableCollection<ConversationItem> Conversations { get; } = new();
@@ -219,6 +227,30 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task CaptureScreenshot()
+    {
+        if (!_agent.IsConnected) return;
+
+        try
+        {
+            var result = await _agent.RequestScreenshotAsync();
+            if (result is not null)
+            {
+                var (width, height, png_base64) = result.Value;
+                var bytes = Convert.FromBase64String(png_base64);
+                using var ms = new MemoryStream(bytes);
+                ScreenshotImage = new Bitmap(ms);
+                ScreenshotInfo = $"{width}x{height}";
+                LogEntries.Add(LogEntry.Info($"Screenshot captured: {width}x{height}"));
+            }
+        }
+        catch (Exception ex)
+        {
+            LogEntries.Add(LogEntry.Error($"Screenshot failed: {ex.Message}"));
+        }
+    }
+
+    [RelayCommand]
     private void NewConversation()
     {
         var count = Conversations.Count + 1;
@@ -278,6 +310,9 @@ public partial class MainWindowViewModel : ViewModelBase
             var response = await _agent.SendInstructionAsync(instruction);
             ChatMessages.Add(ChatMessage.Agent(response));
             LogEntries.Add(LogEntry.Info("Agent responded"));
+
+            // Capture screenshot after instruction completes
+            await CaptureScreenshot();
         }
         catch (Exception ex)
         {

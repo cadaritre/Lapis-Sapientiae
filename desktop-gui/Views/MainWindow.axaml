@@ -319,15 +319,33 @@
                 <Border DockPanel.Dock="Top" Classes="card" Height="260"
                         Margin="0,0,0,10">
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Classes="section-header"
-                                   Text="SCREENSHOT" Margin="14,12,14,8"/>
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto"
+                              Margin="14,12,14,8">
+                            <TextBlock Classes="section-header" Text="SCREENSHOT"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding ScreenshotInfo}"
+                                           FontSize="10" Foreground="#3d4052"
+                                           VerticalAlignment="Center"/>
+                                <Button Classes="window-btn"
+                                        Command="{Binding CaptureScreenshotCommand}"
+                                        ToolTip.Tip="Capture screenshot">
+                                    <TextBlock Text="&#x1F4F7;" FontSize="11"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
                         <Border Background="#0a0c10" Margin="10,0,10,10"
-                                CornerRadius="8">
-                            <TextBlock Text="No capture"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="#2a2d38" FontSize="12"
-                                       FontStyle="Italic"/>
+                                CornerRadius="8" ClipToBounds="True">
+                            <Panel>
+                                <Image Source="{Binding ScreenshotImage}"
+                                       Stretch="Uniform"
+                                       IsVisible="{Binding ScreenshotImage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                <TextBlock Text="No capture"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="#2a2d38" FontSize="12"
+                                           FontStyle="Italic"
+                                           IsVisible="{Binding ScreenshotImage, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            </Panel>
                         </Border>
                     </DockPanel>
                 </Border>

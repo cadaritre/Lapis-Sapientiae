@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
+xcap = "0.0.13"
+image = { version = "0.25", default-features = false, features = ["png"] }
+base64 = "0.22"

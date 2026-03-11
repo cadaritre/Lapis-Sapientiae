@@ -56,6 +56,18 @@ public class AgentService : IDisposable
         return await _client.SendRequestAsync("agent.status");
     }
 
+    /// <summary>Request a screenshot from the Core Agent. Returns base64 PNG data.</summary>
+    public async Task<(int width, int height, string png_base64)?> RequestScreenshotAsync()
+    {
+        var result = await _client.SendRequestAsync("agent.screenshot");
+        if (result is null) return null;
+        var width = result["width"]?.GetValue<int>() ?? 0;
+        var height = result["height"]?.GetValue<int>() ?? 0;
+        var data = result["png_base64"]?.GetValue<string>() ?? "";
+        if (string.IsNullOrEmpty(data)) return null;
+        return (width, height, data);
+    }
+
     public async Task DisconnectAsync()
     {
         await _client.DisconnectAsync();
