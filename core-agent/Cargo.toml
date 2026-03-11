@@ -22,3 +22,5 @@ edition = "2021"
 orchestrator = { path = "crates/orchestrator" }
 logging = { path = "crates/logging" }
 config = { path = "crates/config" }
+ipc = { path = "crates/ipc" }
+tokio = { version = "1", features = ["full"] }

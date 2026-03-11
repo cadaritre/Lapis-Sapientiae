@@ -1,5 +1,7 @@
 /// Lapis Sapientiae — Core Agent entry point.
-fn main() {
+
+#[tokio::main]
+async fn main() {
     println!("===========================================");
     println!("  Lapis Sapientiae — Core Agent v0.1.0");
     println!("===========================================");
@@ -26,11 +28,18 @@ fn main() {
     println!("  IPC:  {}:{}", cfg.ipc_transport, cfg.ipc_port);
     println!("===========================================");
     println!();
-    println!("Core agent is ready. Waiting for instructions...");
 
-    // Phase 1: no event loop yet — just demonstrate the pipeline.
-    match orchestrator::handle_instruction("Phase 1 smoke test", &cfg) {
-        Ok(summary) => println!("Result: {summary}"),
-        Err(e) => eprintln!("Error: {e}"),
+    let server = match ipc::IpcServer::new(cfg) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to create IPC server: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    println!("Core agent starting IPC server...");
+    if let Err(e) = server.run().await {
+        eprintln!("IPC server error: {e}");
+        std::process::exit(1);
     }
 }
