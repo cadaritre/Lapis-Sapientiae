@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "core-agent",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": ["run"],
+      "port": 9100,
+      "cwd": "core-agent"
+    },
+    {
+      "name": "desktop-gui",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run"],
+      "port": 5000,
+      "cwd": "desktop-gui"
+    }
+  ]
+}
