@@ -63,12 +63,12 @@ lapis-sapientiae/
 │       ├── config/
 │       └── ipc/
 ├── desktop-gui/           # C# Avalonia application
-│   └── src/
-│       ├── Views/
-│       ├── ViewModels/
-│       ├── Services/
-│       ├── IpcClient/
-│       └── State/
+│   ├── Views/
+│   ├── ViewModels/
+│   ├── Services/
+│   ├── IpcClient/
+│   ├── State/
+│   └── Assets/
 └── docs/
     ├── README.md
     ├── RULES.md

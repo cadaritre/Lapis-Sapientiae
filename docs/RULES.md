@@ -85,6 +85,13 @@ These rules are **mandatory** for every contributor and every phase of developme
 - Public APIs (functions, traits, interfaces) must have doc comments.
 - Complex logic must have inline comments explaining *why*, not *what*.
 
+## 13. Attribution and authorship
+
+- **Never** add AI agents, AI assistants, or their parent companies as commit co-authors, contributors, or collaborators.
+- Commit messages must not contain `Co-Authored-By` lines referencing AI tools.
+- The project's contributor list must only include human contributors.
+- This applies to all AI tools used during development (Claude, ChatGPT, Copilot, Gemini, etc.).
+
 ## The golden rule
 
 > When in doubt between complexity and simplicity, **choose simplicity**.

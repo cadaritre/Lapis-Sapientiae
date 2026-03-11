@@ -4,7 +4,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 0 — Documentation and repository structure
+## Phase 0 — Documentation and repository structure ✓
+
+**Status: COMPLETE**
 
 **Objective:** Establish project documentation and directory layout.
 
@@ -25,7 +27,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 1 — Core Agent skeleton (Rust)
+## Phase 1 — Core Agent skeleton (Rust) ✓
+
+**Status: COMPLETE**
 
 **Objective:** Create the Rust workspace with all crate stubs that compile and run.
 
@@ -47,7 +51,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 2 — GUI skeleton (C# Avalonia)
+## Phase 2 — GUI skeleton (C# Avalonia) ✓
+
+**Status: COMPLETE**
 
 **Objective:** Create the Avalonia desktop application with a basic window.
 
@@ -67,7 +73,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 3 — IPC between GUI and Core
+## Phase 3 — IPC between GUI and Core ✓
+
+**Status: COMPLETE**
 
 **Objective:** Establish bidirectional JSON-RPC communication between the two processes.
 
