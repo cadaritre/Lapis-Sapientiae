@@ -30,6 +30,15 @@ public partial class MainWindow : Window
         Close();
     }
 
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (DataContext is ViewModels.MainWindowViewModel vm)
+        {
+            vm.Shutdown();
+        }
+        base.OnClosing(e);
+    }
+
     private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)

@@ -53,11 +53,17 @@ pub fn capture_screen() -> LapisResult<Screenshot> {
         .capture_image()
         .map_err(|e| LapisError::Perception(format!("Failed to capture screen: {e}")))?;
 
-    let width = image.width();
-    let height = image.height();
+    let mut dynamic = image::DynamicImage::ImageRgba8(image);
+
+    // Downscale to 1080p max to reduce size for VLM processing
+    if dynamic.width() > 1920 || dynamic.height() > 1080 {
+        dynamic = dynamic.resize(1920, 1080, image::imageops::FilterType::Triangle);
+    }
+
+    let width = dynamic.width();
+    let height = dynamic.height();
 
     let mut png_bytes = Vec::new();
-    let dynamic = image::DynamicImage::ImageRgba8(image);
     dynamic
         .write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
         .map_err(|e| LapisError::Perception(format!("Failed to encode PNG: {e}")))?;

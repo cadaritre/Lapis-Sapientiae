@@ -100,6 +100,7 @@ public partial class ConversationItem : ObservableObject
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly AgentService _agent = new();
+    private readonly ProcessManager _processManager = new();
 
     [ObservableProperty]
     private string _connectionStatus = "Disconnected";
@@ -152,11 +153,11 @@ public partial class MainWindowViewModel : ViewModelBase
         var defaultConv = ConversationItem.Create("General", "Default workspace");
         defaultConv.Messages.Clear();
         defaultConv.Messages.Add(ChatMessage.System("Lapis Sapientiae started."));
-        defaultConv.Messages.Add(ChatMessage.System("Waiting for Core Agent connection..."));
+        defaultConv.Messages.Add(ChatMessage.System("Launching services..."));
         Conversations.Add(defaultConv);
         SelectedConversation = defaultConv;
 
-        _ = TryConnectAsync();
+        _ = StartServicesAndConnectAsync();
     }
 
     partial void OnSelectedConversationChanged(ConversationItem? value)
@@ -185,6 +186,41 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             LogEntries.Add(LogEntry.Error($"Step {stepId}/{total} failed: {result ?? desc}"));
         }
+    }
+
+    private async Task StartServicesAndConnectAsync()
+    {
+        // Resolve path to core agent executable
+        var guiDir = AppDomain.CurrentDomain.BaseDirectory;
+        var coreAgentPath = Path.GetFullPath(Path.Combine(guiDir, "..", "..", "..", "..", "core-agent", "target", "release", "lapis-core.exe"));
+
+        // Start Ollama server
+        _processManager.StartOllama();
+        LogEntries.Add(LogEntry.Info("Started Ollama terminal"));
+
+        // Start Core Agent
+        if (File.Exists(coreAgentPath))
+        {
+            _processManager.StartCoreAgent(coreAgentPath);
+            LogEntries.Add(LogEntry.Info("Started Core Agent terminal"));
+        }
+        else
+        {
+            LogEntries.Add(LogEntry.Warn($"Core Agent not found at: {coreAgentPath}"));
+        }
+
+        // Wait for services to initialize
+        await Task.Delay(3000);
+        ChatMessages.Add(ChatMessage.System("Services launched. Connecting..."));
+
+        await TryConnectAsync();
+    }
+
+    /// <summary>Kill all managed processes on shutdown.</summary>
+    public void Shutdown()
+    {
+        _processManager.KillAll();
+        _agent.Dispose();
     }
 
     private async Task TryConnectAsync()
