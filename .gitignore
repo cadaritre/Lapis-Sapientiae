@@ -1,0 +1,22 @@
+# Rust
+core-agent/target/
+
+# .NET / Avalonia
+desktop-gui/bin/
+desktop-gui/obj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Environment
+.env
+*.local

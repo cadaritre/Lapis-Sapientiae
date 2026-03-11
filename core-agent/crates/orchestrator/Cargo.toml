@@ -1,0 +1,11 @@
+[package]
+name = "orchestrator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+planner = { path = "../planner" }
+executor = { path = "../executor" }
+logging = { path = "../logging" }
+config = { path = "../config" }
