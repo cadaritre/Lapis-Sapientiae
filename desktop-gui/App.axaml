@@ -97,6 +97,24 @@
             <Setter Property="Width" Value="8"/>
             <Setter Property="Height" Value="8"/>
         </Style>
+
+        <!-- Window control buttons -->
+        <Style Selector="Button.window-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.window-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1e2029"/>
+        </Style>
+        <Style Selector="Button.window-close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#c93b3b"/>
+        </Style>
     </Application.Styles>
 
 </Application>
