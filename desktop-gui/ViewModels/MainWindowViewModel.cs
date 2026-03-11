@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -68,6 +69,32 @@ public partial class LogEntry : ObservableObject
     };
 }
 
+public partial class ConversationItem : ObservableObject
+{
+    [ObservableProperty]
+    private string _title = "";
+
+    [ObservableProperty]
+    private string _subtitle = "";
+
+    [ObservableProperty]
+    private IBrush _statusColor = new SolidColorBrush(Color.Parse("#3d4052"));
+
+    public ObservableCollection<ChatMessage> Messages { get; } = new();
+
+    public static ConversationItem Create(string title, string subtitle)
+    {
+        var item = new ConversationItem
+        {
+            Title = title,
+            Subtitle = subtitle,
+            StatusColor = new SolidColorBrush(Color.Parse("#6c8aff"))
+        };
+        item.Messages.Add(ChatMessage.System($"Project '{title}' created."));
+        return item;
+    }
+}
+
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly AgentService _agent = new();
@@ -87,7 +114,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSending;
 
+    [ObservableProperty]
+    private ConversationItem? _selectedConversation;
+
     public SettingsViewModel Settings { get; } = new();
+
+    public ObservableCollection<ConversationItem> Conversations { get; } = new();
 
     public MainWindowViewModel()
     {
@@ -100,8 +132,51 @@ public partial class MainWindowViewModel : ViewModelBase
             });
         };
 
-        // Try to connect on startup
+        _agent.NotificationReceived += (method, paramsNode) =>
+        {
+            if (method == "agent.step_progress" && paramsNode is not null)
+            {
+                Dispatcher.UIThread.Post(() => HandleStepProgress(paramsNode));
+            }
+        };
+
+        // Create default conversation
+        var defaultConv = ConversationItem.Create("General", "Default workspace");
+        defaultConv.Messages.Clear();
+        defaultConv.Messages.Add(ChatMessage.System("Lapis Sapientiae started."));
+        defaultConv.Messages.Add(ChatMessage.System("Waiting for Core Agent connection..."));
+        Conversations.Add(defaultConv);
+        SelectedConversation = defaultConv;
+
         _ = TryConnectAsync();
+    }
+
+    partial void OnSelectedConversationChanged(ConversationItem? value)
+    {
+        OnPropertyChanged(nameof(ChatMessages));
+    }
+
+    private void HandleStepProgress(System.Text.Json.Nodes.JsonNode paramsNode)
+    {
+        var stepId = paramsNode["step_id"]?.GetValue<int>() ?? 0;
+        var total = paramsNode["total_steps"]?.GetValue<int>() ?? 0;
+        var desc = paramsNode["description"]?.GetValue<string>() ?? "";
+        var status = paramsNode["status"]?.GetValue<string>() ?? "";
+        var result = paramsNode["result"]?.GetValue<string>();
+
+        if (status == "started")
+        {
+            ChatMessages.Add(ChatMessage.System($"[{stepId}/{total}] {desc}..."));
+            LogEntries.Add(LogEntry.Info($"Step {stepId}/{total} started: {desc}"));
+        }
+        else if (status == "completed")
+        {
+            LogEntries.Add(LogEntry.Info($"Step {stepId}/{total} completed: {result ?? desc}"));
+        }
+        else if (status == "failed")
+        {
+            LogEntries.Add(LogEntry.Error($"Step {stepId}/{total} failed: {result ?? desc}"));
+        }
     }
 
     private async Task TryConnectAsync()
@@ -143,6 +218,16 @@ public partial class MainWindowViewModel : ViewModelBase
         await TryConnectAsync();
     }
 
+    [RelayCommand]
+    private void NewConversation()
+    {
+        var count = Conversations.Count + 1;
+        var conv = ConversationItem.Create($"Project {count}", DateTime.Now.ToString("MMM dd, HH:mm"));
+        Conversations.Add(conv);
+        SelectedConversation = conv;
+        LogEntries.Add(LogEntry.Info($"Created project: {conv.Title}"));
+    }
+
     public IBrush StatusColor => ConnectionStatus == "Connected"
         ? new SolidColorBrush(Color.Parse("#50c878"))
         : new SolidColorBrush(Color.Parse("#e05050"));
@@ -152,11 +237,8 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(StatusColor));
     }
 
-    public ObservableCollection<ChatMessage> ChatMessages { get; } = new()
-    {
-        ChatMessage.System("Lapis Sapientiae started."),
-        ChatMessage.System("Waiting for Core Agent connection...")
-    };
+    public ObservableCollection<ChatMessage> ChatMessages =>
+        SelectedConversation?.Messages ?? new ObservableCollection<ChatMessage>();
 
     public ObservableCollection<LogEntry> LogEntries { get; } = new()
     {
@@ -174,6 +256,14 @@ public partial class MainWindowViewModel : ViewModelBase
         UserInput = string.Empty;
         ChatMessages.Add(ChatMessage.User(instruction));
         LogEntries.Add(LogEntry.Info($"Sending: {instruction}"));
+
+        // Update conversation subtitle with last message
+        if (SelectedConversation is not null)
+        {
+            SelectedConversation.Subtitle = instruction.Length > 30
+                ? instruction[..30] + "..."
+                : instruction;
+        }
 
         if (!_agent.IsConnected)
         {

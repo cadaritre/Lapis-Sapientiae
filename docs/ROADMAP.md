@@ -97,7 +97,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 4 — Basic agent loop (simulation mode)
+## Phase 4 — Basic agent loop (simulation mode) ✓
+
+**Status: COMPLETE**
 
 **Objective:** Implement the core orchestration loop that receives a user message, creates a plan, and simulates execution.
 
@@ -119,7 +121,9 @@ Each phase is small, focused, and must be completed before starting the next. Ev
 
 ---
 
-## Phase 5 — Simulated actions system
+## Phase 5 — Simulated actions system ✓
+
+**Status: COMPLETE**
 
 **Objective:** Define the action vocabulary and implement all actions in simulation mode.
 

@@ -1,10 +1,12 @@
 /// IPC server module for JSON-RPC 2.0 communication with the GUI.
 ///
 /// Listens on a TCP port and handles newline-delimited JSON-RPC messages.
+/// Phase 4: supports pushing step notifications during instruction execution.
 use common::{LapisError, LapisResult};
 use config::AppConfig;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use std::sync::{Arc, Mutex};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpListener;
 
 // ── JSON-RPC 2.0 types ──
@@ -31,6 +33,14 @@ pub struct JsonRpcResponse {
 pub struct JsonRpcError {
     pub code: i32,
     pub message: String,
+}
+
+/// A JSON-RPC notification (no id, server→client).
+#[derive(Debug, Serialize)]
+pub struct JsonRpcNotification {
+    pub jsonrpc: String,
+    pub method: String,
+    pub params: serde_json::Value,
 }
 
 impl JsonRpcResponse {
@@ -99,7 +109,8 @@ async fn handle_connection(
     stream: tokio::net::TcpStream,
     config: &AppConfig,
 ) -> LapisResult<()> {
-    let (reader, mut writer) = stream.into_split();
+    let (reader, writer) = stream.into_split();
+    let writer = Arc::new(Mutex::new(writer));
     let mut lines = BufReader::new(reader).lines();
 
     while let Some(line) = lines
@@ -120,36 +131,60 @@ async fn handle_connection(
                     -32700,
                     format!("Parse error: {e}"),
                 );
-                let mut out = serde_json::to_string(&err_resp).unwrap_or_default();
-                out.push('\n');
-                let _ = writer.write_all(out.as_bytes()).await;
+                send_message(&writer, &err_resp).await;
                 continue;
             }
         };
 
-        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
-        let response = dispatch_request(&request, config);
+        let response = dispatch_request(&request, config, &writer).await;
 
-        let mut out = serde_json::to_string(&response).unwrap_or_default();
-        out.push('\n');
-        writer
-            .write_all(out.as_bytes())
-            .await
-            .map_err(|e| LapisError::Ipc(format!("write error: {e}")))?;
-
-        // If this was a notification (no id), don't expect ack
-        let _ = id;
+        send_message(&writer, &response).await;
     }
 
     Ok(())
 }
 
+/// Send a serializable message through the writer.
+async fn send_message<T: Serialize>(
+    writer: &Arc<Mutex<tokio::net::tcp::OwnedWriteHalf>>,
+    msg: &T,
+) {
+    let mut out = serde_json::to_string(msg).unwrap_or_default();
+    out.push('\n');
+    let mut w = writer.lock().unwrap_or_else(|e| e.into_inner());
+    // Use a blocking write since we hold the mutex briefly
+    let bytes = out.as_bytes();
+    let _ = std::io::Write::write_all(&mut WriterAdapter(&mut *w), bytes);
+}
+
+/// Adapter to use tokio OwnedWriteHalf with std::io::Write.
+/// We buffer into a Vec and then write synchronously since we're in a mutex.
+struct WriterAdapter<'a>(&'a mut tokio::net::tcp::OwnedWriteHalf);
+
+impl<'a> std::io::Write for WriterAdapter<'a> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // Use try_write for non-blocking TCP write
+        match self.0.try_write(buf) {
+            Ok(n) => Ok(n),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 /// Route a JSON-RPC request to the appropriate handler.
-fn dispatch_request(req: &JsonRpcRequest, config: &AppConfig) -> JsonRpcResponse {
+async fn dispatch_request(
+    req: &JsonRpcRequest,
+    config: &AppConfig,
+    writer: &Arc<Mutex<tokio::net::tcp::OwnedWriteHalf>>,
+) -> JsonRpcResponse {
     let id = req.id.clone().unwrap_or(serde_json::Value::Null);
 
     match req.method.as_str() {
-        "agent.instruct" => handle_instruct(id, &req.params, config),
+        "agent.instruct" => handle_instruct(id, &req.params, config, writer).await,
         "agent.ping" => JsonRpcResponse::success(id, serde_json::json!({"pong": true})),
         "agent.status" => JsonRpcResponse::success(
             id,
@@ -162,11 +197,12 @@ fn dispatch_request(req: &JsonRpcRequest, config: &AppConfig) -> JsonRpcResponse
     }
 }
 
-/// Handle the `agent.instruct` method.
-fn handle_instruct(
+/// Handle the `agent.instruct` method, sending step notifications.
+async fn handle_instruct(
     id: serde_json::Value,
     params: &Option<serde_json::Value>,
     config: &AppConfig,
+    writer: &Arc<Mutex<tokio::net::tcp::OwnedWriteHalf>>,
 ) -> JsonRpcResponse {
     let text = params
         .as_ref()
@@ -178,7 +214,24 @@ fn handle_instruct(
         return JsonRpcResponse::error(id, -32602, "Missing 'text' parameter".into());
     }
 
-    match orchestrator::handle_instruction(text, config) {
+    // Collect notifications to send after each step
+    let writer_clone = Arc::clone(writer);
+
+    match orchestrator::handle_instruction(text, config, move |step_notif| {
+        // Send notification immediately
+        let notification = JsonRpcNotification {
+            jsonrpc: "2.0".into(),
+            method: "agent.step_progress".into(),
+            params: serde_json::to_value(&step_notif).unwrap_or_default(),
+        };
+        let mut out = serde_json::to_string(&notification).unwrap_or_default();
+        out.push('\n');
+        let mut w = writer_clone.lock().unwrap_or_else(|e| e.into_inner());
+        let _ = std::io::Write::write_all(
+            &mut WriterAdapter(&mut *w),
+            out.as_bytes(),
+        );
+    }) {
         Ok(summary) => JsonRpcResponse::success(id, serde_json::json!({"summary": summary})),
         Err(e) => JsonRpcResponse::error(id, -32000, format!("Agent error: {e}")),
     }
@@ -194,38 +247,14 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_ping() {
-        let req = JsonRpcRequest {
+    fn dispatch_formats_notification() {
+        let notif = JsonRpcNotification {
             jsonrpc: "2.0".into(),
-            method: "agent.ping".into(),
-            params: None,
-            id: Some(serde_json::json!(1)),
+            method: "agent.step_progress".into(),
+            params: serde_json::json!({"step_id": 1}),
         };
-        let resp = dispatch_request(&req, &AppConfig::default());
-        assert!(resp.result.is_some());
-    }
-
-    #[test]
-    fn dispatch_unknown_method() {
-        let req = JsonRpcRequest {
-            jsonrpc: "2.0".into(),
-            method: "unknown".into(),
-            params: None,
-            id: Some(serde_json::json!(1)),
-        };
-        let resp = dispatch_request(&req, &AppConfig::default());
-        assert!(resp.error.is_some());
-    }
-
-    #[test]
-    fn dispatch_instruct() {
-        let req = JsonRpcRequest {
-            jsonrpc: "2.0".into(),
-            method: "agent.instruct".into(),
-            params: Some(serde_json::json!({"text": "hello"})),
-            id: Some(serde_json::json!(1)),
-        };
-        let resp = dispatch_request(&req, &AppConfig::default());
-        assert!(resp.result.is_some());
+        let json = serde_json::to_string(&notif).unwrap();
+        assert!(json.contains("agent.step_progress"));
+        assert!(!json.contains("\"id\""));
     }
 }

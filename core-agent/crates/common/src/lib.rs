@@ -2,9 +2,10 @@
 ///
 /// All modules return `Result<T, LapisError>` so that errors propagate
 /// uniformly through the orchestrator and can be logged consistently.
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum LapisError {
     Config(String),
     Ipc(String),

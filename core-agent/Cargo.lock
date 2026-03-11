@@ -7,6 +7,7 @@ name = "actions"
 version = "0.1.0"
 dependencies = [
  "common",
+ "serde",
 ]
 
 [[package]]
@@ -30,6 +31,10 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 [[package]]
 name = "common"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "config"
@@ -107,6 +112,8 @@ name = "logging"
 version = "0.1.0"
 dependencies = [
  "common",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -135,6 +142,8 @@ dependencies = [
  "executor",
  "logging",
  "planner",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -179,6 +188,8 @@ version = "0.1.0"
 dependencies = [
  "actions",
  "common",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

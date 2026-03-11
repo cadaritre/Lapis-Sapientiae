@@ -3,12 +3,12 @@
         xmlns:vm="using:LapisGui.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="720"
         x:Class="LapisGui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Lapis Sapientiae"
-        Width="1100" Height="720"
-        MinWidth="800" MinHeight="520"
+        Width="1200" Height="720"
+        MinWidth="900" MinHeight="520"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="40"
@@ -20,15 +20,14 @@
 
     <DockPanel>
 
-        <!-- ═══ Custom Title Bar ═══ -->
+        <!-- Custom Title Bar -->
         <Border DockPanel.Dock="Top" Height="40" Background="#0d0f14"
-                IsHitTestVisible="True">
+                PointerPressed="OnTitleBarPointerPressed">
             <Grid ColumnDefinitions="Auto,*,Auto">
 
                 <!-- App identity -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
                             Margin="16,0,0,0" VerticalAlignment="Center">
-                    <!-- Diamond icon -->
                     <Border Width="20" Height="20" CornerRadius="4"
                             Background="#6c8aff" Opacity="0.9">
                         <TextBlock Text="&#x25C6;" FontSize="12"
@@ -40,21 +39,18 @@
                                Foreground="#8b8fa3" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Drag region -->
-                <Border Grid.Column="1" Background="Transparent"
-                        IsHitTestVisible="True"/>
+                <!-- Drag region (transparent, fills center) -->
+                <Border Grid.Column="1" Background="Transparent"/>
 
                 <!-- Status indicators + window controls -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12"
                             Margin="0,0,0,0" VerticalAlignment="Center">
-                    <!-- Connection status -->
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Ellipse Classes="status-dot"
                                  Fill="{Binding StatusColor}"/>
                         <TextBlock Text="{Binding ConnectionStatus}"
                                    FontSize="11" Foreground="#6b7084"/>
                     </StackPanel>
-                    <!-- Simulation badge -->
                     <Border Background="#1a1d27" CornerRadius="6" Padding="10,4"
                             BorderBrush="#2a2d38" BorderThickness="1"
                             IsVisible="{Binding IsSimulationMode}">
@@ -62,7 +58,6 @@
                                    Foreground="#f0a050"/>
                     </Border>
 
-                    <!-- Settings button -->
                     <Border Width="1" Height="16" Background="#2a2d38" Margin="2,0"/>
                     <Button Classes="window-btn" Command="{Binding ToggleSettingsCommand}"
                             ToolTip.Tip="Settings">
@@ -70,17 +65,14 @@
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
 
-                    <!-- Separator -->
                     <Border Width="1" Height="16" Background="#2a2d38" Margin="2,0"/>
 
-                    <!-- Minimize button -->
                     <Button Classes="window-btn" Click="OnMinimizeClick"
                             ToolTip.Tip="Minimize">
                         <TextBlock Text="&#x2015;" FontSize="10" Foreground="#6b7084"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
 
-                    <!-- Close button -->
                     <Button Classes="window-btn window-close" Click="OnCloseClick"
                             ToolTip.Tip="Close">
                         <TextBlock Text="&#x2715;" FontSize="11" Foreground="#6b7084"
@@ -90,23 +82,91 @@
             </Grid>
         </Border>
 
-        <!-- Thin separator -->
         <Border DockPanel.Dock="Top" Height="1" Background="#1a1d27"/>
 
-        <!-- ═══ Main Content ═══ -->
-        <Grid ColumnDefinitions="*,1,340" Margin="0">
+        <!-- Main Content: Sidebar + Chat + Right Panel -->
+        <Grid ColumnDefinitions="220,1,*,1,340">
 
-            <!-- ── Left: Chat Panel + Settings Overlay ── -->
-            <Grid Grid.Column="0">
+            <!-- ── Left Sidebar: Conversations ── -->
+            <DockPanel Grid.Column="0" Background="#0a0c10">
 
-                <!-- Chat Panel (always present) -->
+                <!-- New conversation button -->
+                <Button DockPanel.Dock="Top" Margin="12,12,12,8"
+                        Classes="primary" HorizontalAlignment="Stretch"
+                        Command="{Binding NewConversationCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                HorizontalAlignment="Center">
+                        <TextBlock Text="+" FontSize="14" FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Text="New Project" FontSize="12"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Section label -->
+                <TextBlock DockPanel.Dock="Top" Text="PROJECTS"
+                           FontSize="10" FontWeight="Bold" Foreground="#3d4052"
+                           Margin="16,4,0,8"
+                           LetterSpacing="1.5"/>
+
+                <!-- Conversation list -->
+                <ListBox Margin="8,0,8,12"
+                         ItemsSource="{Binding Conversations}"
+                         SelectedItem="{Binding SelectedConversation}"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="Margin" Value="0,2"/>
+                            <Setter Property="CornerRadius" Value="8"/>
+                            <Setter Property="Foreground" Value="#8b8fa3"/>
+                            <Setter Property="FontSize" Value="12"/>
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#1a1d27"/>
+                        </Style>
+                        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#12141a"/>
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ConversationItem">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" Width="6" Height="6"
+                                        CornerRadius="3" Margin="0,0,10,0"
+                                        Background="{Binding StatusColor}"
+                                        VerticalAlignment="Center"/>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}"
+                                               FontSize="12" FontWeight="Medium"
+                                               Foreground="#c8cad3"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Subtitle}"
+                                               FontSize="10" Foreground="#3d4052"
+                                               Margin="0,2,0,0"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Divider -->
+            <Border Grid.Column="1" Background="#1a1d27"/>
+
+            <!-- ── Center: Chat Panel + Settings Overlay ── -->
+            <Grid Grid.Column="2">
+
+                <!-- Chat Panel -->
                 <DockPanel Margin="16,12,8,16"
                            IsVisible="{Binding !IsSettingsOpen}">
 
                     <TextBlock DockPanel.Dock="Top" Classes="section-header"
                                Text="CHAT"/>
 
-                    <!-- Input area (bottom) -->
+                    <!-- Input area -->
                     <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto"
                           Margin="0,10,0,0">
                         <TextBox Grid.Column="0"
@@ -118,7 +178,7 @@
                                 Command="{Binding SendMessageCommand}"/>
                     </Grid>
 
-                    <!-- Messages area -->
+                    <!-- Messages -->
                     <Border Classes="card" Padding="14">
                         <ListBox Classes="chat"
                                  ItemsSource="{Binding ChatMessages}"
@@ -145,13 +205,12 @@
                     </Border>
                 </DockPanel>
 
-                <!-- ── Settings Panel (overlay) ── -->
+                <!-- Settings Panel (overlay) -->
                 <Border Margin="16,12,8,16" Classes="card" Padding="0"
                         IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettingsOpen}"
                         DataContext="{Binding Settings}">
                     <DockPanel>
 
-                        <!-- Header -->
                         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto"
                               Margin="20,16,20,0">
                             <TextBlock Text="SETTINGS" Classes="section-header"
@@ -163,17 +222,15 @@
                             </Button>
                         </Grid>
 
-                        <!-- Save button at bottom -->
                         <Button DockPanel.Dock="Bottom" Classes="primary"
                                 Content="Save" Margin="20,10,20,16"
                                 HorizontalAlignment="Left"
                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveSettingsCommand}"/>
 
-                        <!-- Scrollable content -->
                         <ScrollViewer Margin="0,8,0,0" Padding="20,0">
                             <StackPanel Spacing="20">
 
-                                <!-- ── Vision Model (Local) ── -->
+                                <!-- Vision Model -->
                                 <Border Background="#0d0f14" CornerRadius="10"
                                         Padding="16" BorderBrush="#1e2029"
                                         BorderThickness="1">
@@ -185,14 +242,12 @@
                                                        Foreground="#6c8aff"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
-
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Endpoint" FontSize="11"
                                                        Foreground="#6b7084"/>
                                             <TextBox Text="{Binding VisionEndpoint}"
                                                      Watermark="http://localhost:11434"/>
                                         </StackPanel>
-
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Model" FontSize="11"
                                                        Foreground="#6b7084"/>
@@ -202,7 +257,7 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- ── Reasoning Model (Cloud) ── -->
+                                <!-- Reasoning Model -->
                                 <Border Background="#0d0f14" CornerRadius="10"
                                         Padding="16" BorderBrush="#1e2029"
                                         BorderThickness="1">
@@ -214,7 +269,6 @@
                                                        Foreground="#50c878"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
-
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Provider" FontSize="11"
                                                        Foreground="#6b7084"/>
@@ -222,7 +276,6 @@
                                                       SelectedItem="{Binding SelectedProvider}"
                                                       HorizontalAlignment="Stretch"/>
                                         </StackPanel>
-
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="API Key" FontSize="11"
                                                        Foreground="#6b7084"/>
@@ -241,7 +294,6 @@
                                                 </Button>
                                             </Grid>
                                         </StackPanel>
-
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Model" FontSize="11"
                                                        Foreground="#6b7084"/>
@@ -257,13 +309,13 @@
                 </Border>
             </Grid>
 
-            <!-- Vertical divider -->
-            <Border Grid.Column="1" Background="#1a1d27"/>
+            <!-- Divider -->
+            <Border Grid.Column="3" Background="#1a1d27"/>
 
             <!-- ── Right: Screenshot + Logs ── -->
-            <DockPanel Grid.Column="2" Margin="8,12,16,16">
+            <DockPanel Grid.Column="4" Margin="8,12,16,16">
 
-                <!-- Screenshot card (top) -->
+                <!-- Screenshot card -->
                 <Border DockPanel.Dock="Top" Classes="card" Height="260"
                         Margin="0,0,0,10">
                     <DockPanel>
@@ -280,7 +332,7 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Logs card (fills remaining) -->
+                <!-- Logs card -->
                 <Border Classes="card" Padding="0">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Classes="section-header"
