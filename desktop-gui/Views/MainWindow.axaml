@@ -1,0 +1,170 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LapisGui.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
+        x:Class="LapisGui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Lapis Sapientiae"
+        Width="1100" Height="720"
+        MinWidth="800" MinHeight="520"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="40"
+        SystemDecorations="Full">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+
+        <!-- ═══ Custom Title Bar ═══ -->
+        <Border DockPanel.Dock="Top" Height="40" Background="#0d0f14"
+                IsHitTestVisible="True">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <!-- App identity -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
+                            Margin="16,0,0,0" VerticalAlignment="Center">
+                    <!-- Diamond icon -->
+                    <Border Width="20" Height="20" CornerRadius="4"
+                            Background="#6c8aff" Opacity="0.9">
+                        <TextBlock Text="&#x25C6;" FontSize="12"
+                                   Foreground="#ffffff"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Lapis Sapientiae" FontSize="13" FontWeight="SemiBold"
+                               Foreground="#8b8fa3" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Drag region -->
+                <Border Grid.Column="1" Background="Transparent"
+                        IsHitTestVisible="True"/>
+
+                <!-- Status indicators -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14"
+                            Margin="0,0,16,0" VerticalAlignment="Center">
+                    <!-- Connection status -->
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse Classes="status-dot"
+                                 Fill="{Binding StatusColor}"/>
+                        <TextBlock Text="{Binding ConnectionStatus}"
+                                   FontSize="11" Foreground="#6b7084"/>
+                    </StackPanel>
+                    <!-- Simulation badge -->
+                    <Border Background="#1a1d27" CornerRadius="6" Padding="10,4"
+                            BorderBrush="#2a2d38" BorderThickness="1"
+                            IsVisible="{Binding IsSimulationMode}">
+                        <TextBlock Text="SIM" FontSize="10" FontWeight="Bold"
+                                   Foreground="#f0a050"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Thin separator -->
+        <Border DockPanel.Dock="Top" Height="1" Background="#1a1d27"/>
+
+        <!-- ═══ Main Content ═══ -->
+        <Grid ColumnDefinitions="*,1,340" Margin="0">
+
+            <!-- ── Left: Chat Panel ── -->
+            <DockPanel Grid.Column="0" Margin="16,12,8,16">
+
+                <!-- Section label -->
+                <TextBlock DockPanel.Dock="Top" Classes="section-header"
+                           Text="CHAT"/>
+
+                <!-- Input area (bottom) -->
+                <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto"
+                      Margin="0,10,0,0">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding UserInput}"
+                             Watermark="Describe what you want the agent to do..."
+                             KeyDown="OnInputKeyDown"/>
+                    <Button Grid.Column="1" Classes="primary"
+                            Content="Send" Margin="8,0,0,0"
+                            Command="{Binding SendMessageCommand}"/>
+                </Grid>
+
+                <!-- Messages area -->
+                <Border Classes="card" Padding="14">
+                    <ListBox Classes="chat"
+                             ItemsSource="{Binding ChatMessages}"
+                             AutoScrollToSelectedItem="True">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ChatMessage">
+                                <StackPanel Margin="0,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Role}"
+                                                   FontSize="11" FontWeight="Bold"
+                                                   Foreground="{Binding RoleColor}"/>
+                                        <TextBlock Text="{Binding Timestamp}"
+                                                   FontSize="10" Foreground="#3d4052"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Content}"
+                                               TextWrapping="Wrap"
+                                               Foreground="#c8cad3" FontSize="13"
+                                               Margin="0,3,0,0"
+                                               LineHeight="20"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </DockPanel>
+
+            <!-- Vertical divider -->
+            <Border Grid.Column="1" Background="#1a1d27"/>
+
+            <!-- ── Right: Screenshot + Logs ── -->
+            <DockPanel Grid.Column="2" Margin="8,12,16,16">
+
+                <!-- Screenshot card (top) -->
+                <Border DockPanel.Dock="Top" Classes="card" Height="260"
+                        Margin="0,0,0,10">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Classes="section-header"
+                                   Text="SCREENSHOT" Margin="14,12,14,8"/>
+                        <Border Background="#0a0c10" Margin="10,0,10,10"
+                                CornerRadius="8">
+                            <TextBlock Text="No capture"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="#2a2d38" FontSize="12"
+                                       FontStyle="Italic"/>
+                        </Border>
+                    </DockPanel>
+                </Border>
+
+                <!-- Logs card (fills remaining) -->
+                <Border Classes="card" Padding="0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Classes="section-header"
+                                   Text="LOGS" Margin="14,12,14,8"/>
+                        <ListBox Classes="logs" Margin="14,0,14,10"
+                                 ItemsSource="{Binding LogEntries}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LogEntry">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Level}"
+                                                   FontSize="10" FontWeight="Bold"
+                                                   Foreground="{Binding LevelColor}"
+                                                   Width="32"/>
+                                        <TextBlock Text="{Binding Message}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="#6b7084" FontSize="11"
+                                                   FontFamily="{StaticResource MonoFont}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

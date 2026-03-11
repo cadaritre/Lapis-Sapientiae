@@ -1,0 +1,102 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="LapisGui.App"
+             xmlns:local="using:LapisGui"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <FontFamily x:Key="InterFont">avares://Avalonia.Fonts.Inter#Inter</FontFamily>
+        <FontFamily x:Key="MonoFont">JetBrains Mono, Cascadia Code, Consolas, monospace</FontFamily>
+    </Application.Resources>
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="#0d0f14"/>
+            <Setter Property="FontFamily" Value="{StaticResource InterFont}"/>
+            <Setter Property="Foreground" Value="#e2e4e9"/>
+        </Style>
+
+        <!-- Global TextBox styling -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#161920"/>
+            <Setter Property="BorderBrush" Value="#2a2d38"/>
+            <Setter Property="Foreground" Value="#e2e4e9"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#6c8aff"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+        </Style>
+
+        <!-- Primary button -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#6c8aff"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#8aa4ff"/>
+        </Style>
+
+        <!-- Card panel -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#12141a"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="#1e2029"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Section header -->
+        <Style Selector="TextBlock.section-header">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#6b7084"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- Chat ListBox: transparent, no selection highlight -->
+        <Style Selector="ListBox.chat">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.chat ListBoxItem">
+            <Setter Property="Padding" Value="0,2"/>
+        </Style>
+        <Style Selector="ListBox.chat ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Log ListBox -->
+        <Style Selector="ListBox.logs">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.logs ListBoxItem">
+            <Setter Property="Padding" Value="0,1"/>
+        </Style>
+        <Style Selector="ListBox.logs ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Status dot -->
+        <Style Selector="Ellipse.status-dot">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="8"/>
+        </Style>
+    </Application.Styles>
+
+</Application>
